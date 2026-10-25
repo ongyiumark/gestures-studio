@@ -51,7 +51,7 @@ export default function Navbar({
           <div className="relative h-9 w-9 sm:h-10 sm:w-10 shrink-0 overflow-hidden rounded-xl border border-ocean-600/40 shadow-md shadow-terracotta-950/40">
             <Image
               src="/icon.png"
-              alt="Gesture Studio Icon"
+              alt="Hand Pose Studio Icon"
               width={40}
               height={40}
               className="h-full w-full object-cover"
@@ -61,7 +61,7 @@ export default function Navbar({
           <div>
             <div className="flex items-center gap-2">
               <h1 className="text-base font-bold tracking-tight text-white drop-shadow-[1px_1px_3px_#FF8A55] sm:text-lg">
-                Gesture Studio
+                Hand Pose Studio
               </h1>
               <span className="rounded-full border border-gold-300/40 bg-gold-200/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-gold-200 shadow-sm">
                 v2.0
