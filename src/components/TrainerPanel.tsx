@@ -262,7 +262,7 @@ export default function TrainerPanel({
         <div className="text-xs">
           {populatedClasses.length < 2 ? (
             <span className="text-gold-200">
-              Collect samples for at least <strong>2 gesture classes</strong> to
+              Collect samples for at least <strong>2 hand pose classes</strong> to
               enable training ({populatedClasses.length}/2 ready).
             </span>
           ) : (

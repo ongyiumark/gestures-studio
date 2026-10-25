@@ -6,14 +6,16 @@ import {
   TrainedModelRecord,
 } from "@/types/handpose";
 
-const DB_NAME = "gesture_studio_local_v2";
+const DB_NAME = "handpose_studio_local_v2";
+const LEGACY_DB_NAME = "gesture_studio_local_v2";
 const DB_VERSION = 2;
 const STORE_WORKSPACE = "workspace";
 const STORE_DATASETS = "saved_datasets";
 const STORE_MODELS = "saved_models";
 
-const LOCAL_STORAGE_PREFS_KEY = "gesture_studio_prefs_v2";
-const LOCAL_STORAGE_SUMMARY_KEY = "gesture_studio_workspace_summary_v2";
+const LOCAL_STORAGE_PREFS_KEY = "handpose_studio_prefs_v2";
+const LEGACY_STORAGE_PREFS_KEY = "gesture_studio_prefs_v2";
+const LOCAL_STORAGE_SUMMARY_KEY = "handpose_studio_workspace_summary_v2";
 
 export interface UserPreferences {
   hasCompletedTutorial: boolean;
@@ -36,7 +38,9 @@ export function loadPreferencesFromLocalStorage(): UserPreferences {
     return { hasCompletedTutorial: false, hideQuickGuide: false };
   }
   try {
-    const raw = window.localStorage.getItem(LOCAL_STORAGE_PREFS_KEY);
+    const raw =
+      window.localStorage.getItem(LOCAL_STORAGE_PREFS_KEY) ||
+      window.localStorage.getItem(LEGACY_STORAGE_PREFS_KEY);
     if (!raw) return { hasCompletedTutorial: false, hideQuickGuide: false };
     const parsed = JSON.parse(raw);
     return {
@@ -67,14 +71,14 @@ export function savePreferencesToLocalStorage(
   }
 }
 
-function openDatabase(): Promise<IDBDatabase> {
+function openDatabase(dbName: string = DB_NAME): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
     if (typeof window === "undefined" || !window.indexedDB) {
       reject(new Error("Browser storage is not available in this environment."));
       return;
     }
 
-    const request = window.indexedDB.open(DB_NAME, DB_VERSION);
+    const request = window.indexedDB.open(dbName, DB_VERSION);
 
     request.onupgradeneeded = () => {
       const db = request.result;
@@ -155,7 +159,7 @@ export async function saveWorkspaceLocally(
 export async function loadWorkspaceLocally(): Promise<PersistedWorkspace | null> {
   try {
     const db = await openDatabase();
-    return new Promise((resolve, reject) => {
+    const active = await new Promise<PersistedWorkspace | null>((resolve, reject) => {
       const tx = db.transaction(STORE_WORKSPACE, "readonly");
       const store = tx.objectStore(STORE_WORKSPACE);
       const req = store.get("active");
@@ -168,6 +172,41 @@ export async function loadWorkspaceLocally(): Promise<PersistedWorkspace | null>
         reject(req.error);
       };
     });
+
+    if (active && (active.classes?.length > 0 || active.samples?.length > 0)) {
+      return active;
+    }
+
+    // Fallback: check legacy gesture_studio IndexedDB if user previously had data saved
+    try {
+      const legacyDb = await openDatabase(LEGACY_DB_NAME);
+      const legacyActive = await new Promise<PersistedWorkspace | null>((resolve, reject) => {
+        const tx = legacyDb.transaction(STORE_WORKSPACE, "readonly");
+        const store = tx.objectStore(STORE_WORKSPACE);
+        const req = store.get("active");
+        req.onsuccess = () => {
+          legacyDb.close();
+          resolve((req.result as PersistedWorkspace) || null);
+        };
+        req.onerror = () => {
+          legacyDb.close();
+          reject(req.error);
+        };
+      });
+
+      if (legacyActive && (legacyActive.classes?.length > 0 || legacyActive.samples?.length > 0)) {
+        await saveWorkspaceLocally(
+          legacyActive.classes,
+          legacyActive.samples,
+          legacyActive.activeModel
+        );
+        return legacyActive;
+      }
+    } catch {
+      // Legacy database not present
+    }
+
+    return active;
   } catch (err) {
     console.warn("Local browser storage load skipped:", err);
     return null;

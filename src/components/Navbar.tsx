@@ -167,7 +167,7 @@ export default function Navbar({
 
           <button
             onClick={onLoadDemoData}
-            title="Populate 4 sample gesture classes with 3D landmarks to test training immediately"
+            title="Populate 4 sample hand pose classes with 3D landmarks to test training immediately"
             className="flex items-center gap-1.5 rounded-lg border border-white/15 bg-white/10 px-2.5 py-1.5 text-xs font-medium text-slate-100 transition hover:bg-white/20 active:scale-95"
           >
             <Sparkles className="h-3.5 w-3.5 text-gold-200" />

@@ -201,7 +201,7 @@ export async function exportTrainedModelZip(record: TrainedModelRecord) {
 
   const modelJson = {
     format: "layers-model",
-    generatedBy: "Gesture Studio v2.0",
+    generatedBy: "Hand Pose Studio v2.0",
     convertedBy: null,
     modelTopology,
     weightsManifest: [

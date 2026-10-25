@@ -7,7 +7,7 @@ import {
 import { drawHandsOnCanvas, getClassColor } from "@/lib/landmarks";
 
 /**
- * Canonical 21-landmark normalized templates for 4 classic hand gestures
+ * Canonical 21-landmark normalized templates for 4 classic hand poses
  * so users can test training, live charts, and exports with a single click
  * even before turning on their webcam.
  */

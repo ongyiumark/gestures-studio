@@ -182,7 +182,7 @@ export default function ClassManager({
           <div className="flex items-center gap-2">
             <FolderPlus className="h-4 w-4 text-terracotta-400" />
             <h2 className="text-sm font-bold text-white">
-              1. Gesture Classes ({classes.length})
+              1. Hand Pose Classes ({classes.length})
             </h2>
           </div>
           {samples.length > 0 && (
@@ -201,7 +201,7 @@ export default function ClassManager({
             type="text"
             value={newClassInput}
             onChange={(e) => setNewClassInput(e.target.value)}
-            placeholder="Enter new gesture class name (e.g. Peace)…"
+            placeholder="Enter new hand pose class name (e.g. Peace)…"
             className="flex-1 rounded-xl border border-ocean-700/60 bg-[#081320] px-3 py-2 text-xs text-white placeholder-slate-400 focus:border-ocean-500 focus:outline-none"
           />
           <button
