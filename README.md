@@ -19,7 +19,7 @@ An interactive 3D hand-pose dataset builder, in-browser neural network trainer, 
 - **In-Browser Machine Learning (`@tensorflow/tfjs`)**:
   - **TF.js Multi-Layer Perceptron (MLP)**: Trains a 3-layer neural network on translation- and scale-invariant 63-D wrist-centered landmark vectors with 5x 3D rotation/jitter augmentation and live SVG Loss & Accuracy curves.
   - **Instant k-NN Classifier**: Zero-wait distance-weighted Nearest Neighbors classifier with Leave-One-Out accuracy evaluation.
-  - **Live Webcam Prediction HUD**: Real-time gesture prediction banner with animated per-class confidence bars.
+  - **Live Webcam Prediction HUD**: Real-time hand pose prediction banner with animated per-class confidence bars.
 - **100% Browser Local Storage & Rich Exports**:
   - **Zero Server Storage / Complete Privacy**: All classes, captured photos, 3D landmarks, and trained models are stored strictly in the user's browser (`localStorage` + browser `IndexedDB`). Nothing is ever uploaded to a server.
   - **Export Formats**:

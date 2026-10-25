@@ -442,7 +442,7 @@ export default function CameraStage({
   // Capture a single frame + current 21-keypoint hand landmarks
   const captureNow = useCallback((): boolean => {
     if (!activeClass) {
-      setCaptureNotice("Select or create a gesture class first!");
+      setCaptureNotice("Select or create a hand pose class first!");
       setTimeout(() => setCaptureNotice(null), 2200);
       return false;
     }

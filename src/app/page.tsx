@@ -223,7 +223,7 @@ export default function HandPoseStudioPage() {
     setActiveClassName(demo.classes[0].name);
   };
 
-  // Real-time hand detection callback + live gesture classification (throttled to avoid React re-render cascades)
+  // Real-time hand detection callback + live hand pose classification (throttled to avoid React re-render cascades)
   const handleHandsDetected = useCallback(
     (detectedHands: DetectedHand[], currentFps: number) => {
       const now = performance.now();
@@ -394,7 +394,7 @@ export default function HandPoseStudioPage() {
                     1
                   </span>
                   <div className="leading-relaxed">
-                    <strong>Select or add a gesture class</strong> in Step 1 (or click{" "}
+                    <strong>Select or add a hand pose class</strong> in Step 1 (or click{" "}
                     <em>Demo Data</em> in the top bar to load 32 ready-made samples).
                   </div>
                 </div>
@@ -417,7 +417,7 @@ export default function HandPoseStudioPage() {
                     3
                   </span>
                   <div className="leading-relaxed">
-                    <strong>Train your classifier</strong> in Step 2 to recognize your hand gestures live on the webcam feed.
+                    <strong>Train your classifier</strong> in Step 2 to recognize your hand poses live on the webcam feed.
                   </div>
                 </div>
 
@@ -553,7 +553,7 @@ export default function HandPoseStudioPage() {
                   <span className="text-emerald-200">
                     Awesome! You have samples for{" "}
                     <strong>{readyClassCount} classes</strong> ({samples.length}{" "}
-                    total photos). Ready to train your gesture classifier?
+                    total photos). Ready to train your hand pose classifier?
                   </span>
                   <button
                     onClick={() => setActiveStepTab("train")}

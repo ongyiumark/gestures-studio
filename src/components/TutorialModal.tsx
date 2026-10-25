@@ -24,11 +24,11 @@ const TUTORIAL_STEPS = [
   {
     stepNumber: 1,
     title: "Create Your Hand Pose Classes",
-    subtitle: "Define the gestures you want to recognize",
+    subtitle: "Define the hand poses you want to recognize",
     icon: FolderPlus,
     accent: "from-cyan-500 to-blue-600",
     description:
-      "Start by choosing at least 2 gesture labels (like 'Thumbs Up' and 'Peace'). We've already added two starter classes for you, or you can click any of the quick preset chips to add more.",
+      "Start by choosing at least 2 hand pose labels (like 'Thumbs Up' and 'Peace'). We've already added two starter classes for you, or you can click any of the quick preset chips to add more.",
     tips: [
       "Click a class card to make it the active recording target.",
       "You can rename or delete classes at any time.",
@@ -38,7 +38,7 @@ const TUTORIAL_STEPS = [
   {
     stepNumber: 2,
     title: "Capture Webcam Samples",
-    subtitle: "Record 10–15 examples per gesture",
+    subtitle: "Record 10–15 examples per hand pose",
     icon: Camera,
     accent: "from-amber-500 to-orange-600",
     description:
@@ -56,7 +56,7 @@ const TUTORIAL_STEPS = [
     icon: BrainCircuit,
     accent: "from-violet-500 to-indigo-600",
     description:
-      "Switch to Step 2 ('Train & Test Live') and click 'Train Neural Network'. In just a few seconds, a custom classifier trains on your 3D hand landmarks and starts predicting your hand gestures live on the webcam feed!",
+      "Switch to Step 2 ('Train & Test Live') and click 'Train Neural Network'. In just a few seconds, a custom classifier trains on your 3D hand landmarks and starts predicting your hand poses live on the webcam feed!",
     tips: [
       "We normalize hand positions relative to your wrist so distance from the camera won't confuse the model.",
       "You can also switch to 'Instant k-NN' for zero-wait nearest-neighbor matching.",
