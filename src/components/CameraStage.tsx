@@ -59,8 +59,14 @@ export default function CameraStage({
   const [mirrored, setMirrored] = useState<boolean>(true);
   const [showSkeleton, setShowSkeleton] = useState<boolean>(true);
   const [maxHands, setMaxHands] = useState<1 | 2>(2);
-  const [minConfidence, setMinConfidence] = useState<number>(0.4);
+  const [minConfidence, setMinConfidence] = useState<number>(0.35);
   const [showSettings, setShowSettings] = useState<boolean>(false);
+
+  const [activeDelegate, setActiveDelegate] = useState<"CPU" | "GPU">("CPU");
+  const [videoStatus, setVideoStatus] = useState<string>("Connecting…");
+  const [videoPaused, setVideoPaused] = useState<boolean>(false);
+  const [lastDetectError, setLastDetectError] = useState<string | null>(null);
+  const [fpsVal, setFpsVal] = useState<number>(0);
 
   const [modelReady, setModelReady] = useState<boolean>(false);
   const [modelError, setModelError] = useState<string | null>(null);
@@ -117,16 +123,18 @@ export default function CameraStage({
           );
         }
 
-        const candidates: { path: string; delegate: "GPU" | "CPU" }[] = [
-          { path: "/mediapipe/models/hand_landmarker.task", delegate: "GPU" },
-          { path: "/mediapipe/models/hand_landmarker.task", delegate: "CPU" },
+        const preferred = activeDelegate;
+        const fallback = preferred === "CPU" ? "GPU" : "CPU";
+        const candidates: { path: string; delegate: "CPU" | "GPU" }[] = [
+          { path: "/mediapipe/models/hand_landmarker.task", delegate: preferred },
+          { path: "/mediapipe/models/hand_landmarker.task", delegate: fallback },
           {
             path: "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task",
-            delegate: "GPU",
+            delegate: preferred,
           },
           {
             path: "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task",
-            delegate: "CPU",
+            delegate: fallback,
           },
         ];
 
@@ -164,6 +172,7 @@ export default function CameraStage({
               minTrackingConfidence: minConfidence,
             });
             activeCanvas = helperCanvas;
+            setActiveDelegate(candidate.delegate);
             break;
           } catch (err) {
             lastError = err;
@@ -212,7 +221,7 @@ export default function CameraStage({
         activeCanvasRef.current = null;
       }
     };
-  }, [onModelStatusChange, retryCount, maxHands, minConfidence]);
+  }, [onModelStatusChange, retryCount, maxHands, minConfidence, activeDelegate]);
 
   // Start / Stop Webcam Stream
   useEffect(() => {
@@ -312,25 +321,27 @@ export default function CameraStage({
           lastInferenceTimeRef.current = nowMs;
 
           try {
-            // In Safari/WebKit, passing HTMLVideoElement directly to WebGL texImage2D
-            // can fail or stall due to hardware video decoder synchronization.
-            // Drawing the video frame to an offscreen 2D canvas guarantees clean pixel data across all browsers.
-            if (!videoFrameCanvasRef.current) {
-              videoFrameCanvasRef.current = document.createElement("canvas");
-            }
-            const vfc = videoFrameCanvasRef.current;
-            if (vfc.width !== vw || vfc.height !== vh) {
-              vfc.width = vw;
-              vfc.height = vh;
-            }
-            const vfCtx = vfc.getContext("2d");
-            let inputSource: TexImageSource = video;
-            if (vfCtx) {
-              vfCtx.drawImage(video, 0, 0, vw, vh);
-              inputSource = vfc;
+            let result;
+            try {
+              result = landmarker.detectForVideo(video, Math.round(nowMs));
+            } catch {
+              if (!videoFrameCanvasRef.current) {
+                videoFrameCanvasRef.current = document.createElement("canvas");
+              }
+              const vfc = videoFrameCanvasRef.current;
+              if (vfc.width !== vw || vfc.height !== vh) {
+                vfc.width = vw;
+                vfc.height = vh;
+              }
+              const vfCtx = vfc.getContext("2d");
+              if (vfCtx) {
+                vfCtx.drawImage(video, 0, 0, vw, vh);
+                result = landmarker.detectForVideo(vfc, Math.round(nowMs));
+              }
             }
 
-            const result = landmarker.detectForVideo(inputSource, nowMs);
+            if (!result) return;
+
             const handsList = result.landmarks || [];
             const handednessList = result.handedness || result.handednesses || [];
 
@@ -370,6 +381,10 @@ export default function CameraStage({
             const currentFps = timestamps.length;
 
             onHandsDetected(detected, currentFps);
+            setFpsVal(currentFps);
+            setVideoStatus(`${vw}×${vh}`);
+            if (videoPaused) setVideoPaused(false);
+            if (lastDetectError) setLastDetectError(null);
 
             // Throttle React state update to 10 FPS to keep main thread fast
             if (nowMs - lastStateUpdateRef.current >= 100) {
@@ -391,12 +406,19 @@ export default function CameraStage({
               }
             }
           } catch (err) {
+            const msg = err instanceof Error ? err.message : String(err);
+            setLastDetectError(msg);
             console.warn("Detection frame skipped:", err);
           }
         }
       } else if (canvas) {
-        if (cameraOn && video && video.paused) {
-          video.play().catch(() => {});
+        if (cameraOn && video) {
+          if (video.paused) {
+            setVideoPaused(true);
+            video.play().catch(() => {});
+          } else if (video.readyState < 2) {
+            setVideoStatus(`Connecting (ready: ${video.readyState})`);
+          }
         }
         const ctx = canvas.getContext("2d");
         ctx?.clearRect(0, 0, canvas.width, canvas.height);
@@ -679,6 +701,28 @@ export default function CameraStage({
               <option value={25}>25 photos</option>
             </select>
           </div>
+
+          <div className="flex items-center gap-2">
+            <span className="text-slate-400">Engine:</span>
+            <div className="flex rounded-lg border border-slate-800 bg-slate-900 p-0.5">
+              {(["CPU", "GPU"] as const).map((d) => (
+                <button
+                  key={d}
+                  onClick={() => {
+                    setActiveDelegate(d);
+                    setRetryCount((r) => r + 1);
+                  }}
+                  className={`rounded-md px-2.5 py-0.5 font-medium transition ${
+                    activeDelegate === d
+                      ? "bg-cyan-500 text-slate-950"
+                      : "text-slate-400 hover:text-white"
+                  }`}
+                >
+                  {d}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
       )}
 
@@ -712,6 +756,62 @@ export default function CameraStage({
             mirrored ? "-scale-x-100" : ""
           }`}
         />
+
+        {/* Live Diagnostics HUD */}
+        <div className="absolute top-2.5 left-2.5 z-20 flex flex-col gap-1 rounded-lg border border-white/10 bg-slate-950/80 px-2.5 py-1.5 font-mono text-[10px] text-slate-300 backdrop-blur-sm pointer-events-none">
+          <div className="flex items-center gap-1.5">
+            <span
+              className={`h-2 w-2 rounded-full ${
+                videoStatus.includes("Active") || videoStatus.includes("×")
+                  ? "bg-emerald-400 shadow-[0_0_6px_#34d399]"
+                  : "bg-amber-400 animate-pulse"
+              }`}
+            />
+            <span>Cam: {videoStatus}</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span
+              className={`h-2 w-2 rounded-full ${
+                modelReady
+                  ? "bg-cyan-400 shadow-[0_0_6px_#22d3ee]"
+                  : "bg-amber-400"
+              }`}
+            />
+            <span>
+              {activeDelegate} • {fpsVal} FPS • {liveHands.length}{" "}
+              {liveHands.length === 1 ? "hand" : "hands"}
+            </span>
+          </div>
+          {lastDetectError && (
+            <div className="text-rose-400 font-sans text-[9px] max-w-[200px] truncate">
+              {lastDetectError}
+            </div>
+          )}
+        </div>
+
+        {/* Safari Autoplay Resume Overlay if blocked */}
+        {videoPaused && cameraOn && (
+          <div className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-slate-950/80 p-6 text-center backdrop-blur-sm">
+            <div className="max-w-xs space-y-3">
+              <p className="text-sm font-semibold text-slate-200">
+                Webcam stream is paused by your browser.
+              </p>
+              <button
+                onClick={() => {
+                  if (videoRef.current) {
+                    videoRef.current.muted = true;
+                    videoRef.current.play().catch(() => {});
+                    setVideoPaused(false);
+                  }
+                }}
+                className="inline-flex items-center gap-2 rounded-xl bg-cyan-500 px-4 py-2 text-xs font-bold text-slate-950 shadow-lg shadow-cyan-500/25 transition hover:bg-cyan-400 active:scale-95"
+              >
+                <Play className="h-4 w-4 fill-current" />
+                <span>Resume Camera</span>
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Shutter Flash */}
         {flashEffect && (
