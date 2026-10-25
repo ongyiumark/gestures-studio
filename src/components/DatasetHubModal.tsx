@@ -60,7 +60,7 @@ export default function DatasetHubModal({
   onRestoreModel,
 }: DatasetHubModalProps) {
   const [activeTab, setActiveTab] = useState<"export" | "local">("export");
-  const [datasetName, setDatasetName] = useState("gesture-dataset");
+  const [datasetName, setDatasetName] = useState("handpose-dataset");
   const [snapshotDesc, setSnapshotDesc] = useState("");
 
   const [savedDatasets, setSavedDatasets] = useState<DatasetSnapshotSummary[]>(
@@ -313,7 +313,7 @@ export default function DatasetHubModal({
                     <span>Import Workspace (.json)</span>
                   </div>
                   <p className="text-[11px] text-slate-300">
-                    Restore a previously exported Gesture Studio JSON dataset
+                    Restore a previously exported Hand Pose Studio JSON dataset
                     into the studio.
                   </p>
                 </button>

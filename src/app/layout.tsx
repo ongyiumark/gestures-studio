@@ -2,7 +2,10 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Gesture Studio — 3D Hand Pose Dataset Builder & In-Browser ML",
+  metadataBase: new URL(
+    process.env.NEXT_PUBLIC_APP_URL || "https://ongyiumark.com"
+  ),
+  title: "Hand Pose Studio — 3D Dataset Builder & In-Browser ML",
   description:
     "Interactive 3D hand pose dataset builder and in-browser machine learning classifier powered by Google MediaPipe and TensorFlow.js.",
   icons: {
@@ -10,7 +13,7 @@ export const metadata: Metadata = {
     apple: "/apple-icon.png",
   },
   openGraph: {
-    title: "Gesture Studio — 3D Hand Pose Dataset Builder & In-Browser ML",
+    title: "Hand Pose Studio — 3D Dataset Builder & In-Browser ML",
     description:
       "Interactive 3D hand pose dataset builder and in-browser machine learning classifier powered by Google MediaPipe and TensorFlow.js. 100% private in-browser local storage.",
     type: "website",
@@ -19,13 +22,13 @@ export const metadata: Metadata = {
         url: "/opengraph-image.png",
         width: 1200,
         height: 630,
-        alt: "Gesture Studio — 3D Hand Pose Dataset Builder & ML Classifier",
+        alt: "Hand Pose Studio — 3D Hand Pose Dataset Builder & ML Classifier",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Gesture Studio — 3D Hand Pose Dataset Builder & In-Browser ML",
+    title: "Hand Pose Studio — 3D Dataset Builder & In-Browser ML",
     description:
       "Interactive 3D hand pose dataset builder and in-browser machine learning classifier powered by Google MediaPipe and TensorFlow.js.",
     images: ["/opengraph-image.png"],

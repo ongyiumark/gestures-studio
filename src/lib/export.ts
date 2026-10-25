@@ -66,19 +66,19 @@ export function buildLandmarksCsvString(samples: CapturedSample[]): string {
 
 /**
  * Downloads the dataset as a structured ZIP archive:
- * - gesture-dataset/{className}/{className}-{id}.jpeg
- * - gesture-dataset/{className}/{className}-{id}.json
- * - gesture-dataset/landmarks.csv
- * - gesture-dataset/dataset-manifest.json
+ * - handpose-dataset/{className}/{className}-{id}.jpeg
+ * - handpose-dataset/{className}/{className}-{id}.json
+ * - handpose-dataset/landmarks.csv
+ * - handpose-dataset/dataset-manifest.json
  */
 export async function exportDatasetZip(
   classes: PoseClassMeta[],
   samples: CapturedSample[],
-  datasetName = "gesture-dataset"
+  datasetName = "handpose-dataset"
 ) {
   const zip = new JSZip();
   const safeRoot =
-    datasetName.trim().replace(/[^a-zA-Z0-9_-]/g, "-") || "gesture-dataset";
+    datasetName.trim().replace(/[^a-zA-Z0-9_-]/g, "-") || "handpose-dataset";
   const root = zip.folder(safeRoot);
   if (!root) return;
 
@@ -132,7 +132,7 @@ export async function exportDatasetZip(
  */
 export function exportLandmarksCsv(
   samples: CapturedSample[],
-  datasetName = "gesture-landmarks"
+  datasetName = "handpose-landmarks"
 ) {
   const csv = buildLandmarksCsvString(samples);
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
@@ -145,7 +145,7 @@ export function exportLandmarksCsv(
 export function exportDatasetJson(
   classes: PoseClassMeta[],
   samples: CapturedSample[],
-  datasetName = "gesture-workspace"
+  datasetName = "handpose-workspace"
 ) {
   const payload = {
     version: "2.0",
@@ -238,7 +238,7 @@ export async function exportTrainedModelZip(record: TrainedModelRecord) {
     )
   );
 
-  const exampleCode = `// Example: Loading and running your HandPose Trainer TF.js model
+  const exampleCode = `// Example: Loading and running your Hand Pose Studio TF.js model
 import * as tf from '@tensorflow/tfjs';
 
 const CLASSES = ${JSON.stringify(record.classes)};
@@ -274,6 +274,6 @@ export function predictPose(model, landmarks21) {
 
   const blob = await zip.generateAsync({ type: "blob" });
   const safeName =
-    record.name.trim().replace(/[^a-zA-Z0-9_-]/g, "-") || "gesture-tfjs-model";
+    record.name.trim().replace(/[^a-zA-Z0-9_-]/g, "-") || "handpose-tfjs-model";
   saveAs(blob, `${safeName}.zip`);
 }

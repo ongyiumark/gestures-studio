@@ -372,7 +372,7 @@ export default function HandPoseStudioPage() {
         syncStatus={syncStatus}
         onOpenHub={() => setHubOpen(true)}
         onQuickDownloadZip={() =>
-          exportDatasetZip(classes, samples, "gesture-dataset")
+          exportDatasetZip(classes, samples, "handpose-dataset")
         }
         onLoadDemoData={handleLoadDemoDataset}
         onOpenTutorial={() => setTutorialOpen(true)}

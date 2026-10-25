@@ -1,6 +1,6 @@
-# Gesture Studio 2.0
+# Hand Pose Studio 2.0
 
-An interactive 3D hand-pose dataset builder, in-browser neural network trainer, and real-time gesture classification studio built with **Next.js (App Router)**, **TypeScript**, **Tailwind CSS**, **Google MediaPipe HandLandmarker**, and **TensorFlow.js**.
+An interactive 3D hand-pose dataset builder, in-browser neural network trainer, and real-time hand pose classification studio built with **Next.js (App Router)**, **TypeScript**, **Tailwind CSS**, **Google MediaPipe HandLandmarker**, and **TensorFlow.js**.
 
 ## Key Features
 
