@@ -45,6 +45,7 @@ export default function CameraStage({
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const activeCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const videoFrameCanvasRef = useRef<HTMLCanvasElement | null>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const landmarkerRef = useRef<any>(null);
   const rafRef = useRef<number | null>(null);
@@ -138,7 +139,14 @@ export default function CameraStage({
           const helperCanvas = document.createElement("canvas");
           helperCanvas.width = 640;
           helperCanvas.height = 480;
-          helperCanvas.style.display = "none";
+          helperCanvas.style.position = "fixed";
+          helperCanvas.style.top = "-9999px";
+          helperCanvas.style.left = "-9999px";
+          helperCanvas.style.width = "640px";
+          helperCanvas.style.height = "480px";
+          helperCanvas.style.opacity = "0";
+          helperCanvas.style.pointerEvents = "none";
+          helperCanvas.style.visibility = "visible";
           helperCanvas.setAttribute("aria-hidden", "true");
           document.body.appendChild(helperCanvas);
 
@@ -241,8 +249,14 @@ export default function CameraStage({
 
         activeStream = stream;
         if (videoRef.current) {
+          videoRef.current.muted = true;
+          videoRef.current.defaultMuted = true;
+          videoRef.current.setAttribute("playsinline", "true");
+          videoRef.current.setAttribute("webkit-playsinline", "true");
           videoRef.current.srcObject = stream;
-          await videoRef.current.play().catch(() => {});
+          await videoRef.current.play().catch((err) => {
+            console.warn("Video playback autostart pending user action:", err);
+          });
         }
       } catch (err) {
         console.warn("Webcam access error:", err);
@@ -298,7 +312,25 @@ export default function CameraStage({
           lastInferenceTimeRef.current = nowMs;
 
           try {
-            const result = landmarker.detectForVideo(video, nowMs);
+            // In Safari/WebKit, passing HTMLVideoElement directly to WebGL texImage2D
+            // can fail or stall due to hardware video decoder synchronization.
+            // Drawing the video frame to an offscreen 2D canvas guarantees clean pixel data across all browsers.
+            if (!videoFrameCanvasRef.current) {
+              videoFrameCanvasRef.current = document.createElement("canvas");
+            }
+            const vfc = videoFrameCanvasRef.current;
+            if (vfc.width !== vw || vfc.height !== vh) {
+              vfc.width = vw;
+              vfc.height = vh;
+            }
+            const vfCtx = vfc.getContext("2d");
+            let inputSource: TexImageSource = video;
+            if (vfCtx) {
+              vfCtx.drawImage(video, 0, 0, vw, vh);
+              inputSource = vfc;
+            }
+
+            const result = landmarker.detectForVideo(inputSource, nowMs);
             const handsList = result.landmarks || [];
             const handednessList = result.handedness || result.handednesses || [];
 
@@ -363,6 +395,9 @@ export default function CameraStage({
           }
         }
       } else if (canvas) {
+        if (cameraOn && video && video.paused) {
+          video.play().catch(() => {});
+        }
         const ctx = canvas.getContext("2d");
         ctx?.clearRect(0, 0, canvas.width, canvas.height);
       }
@@ -656,6 +691,13 @@ export default function CameraStage({
           autoPlay
           onLoadedMetadata={() => {
             if (videoRef.current) {
+              videoRef.current.muted = true;
+              videoRef.current.play().catch(() => {});
+            }
+          }}
+          onCanPlay={() => {
+            if (videoRef.current) {
+              videoRef.current.muted = true;
               videoRef.current.play().catch(() => {});
             }
           }}
