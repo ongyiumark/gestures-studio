@@ -564,9 +564,9 @@ export default function CameraStage({
   const handDetected = liveHands.length > 0;
 
   return (
-    <div className="flex flex-col rounded-2xl border border-ocean-700/50 bg-[#101e2e] shadow-2xl overflow-hidden">
+    <div className="flex flex-col rounded-2xl border border-ocean-700/50 bg-[#101e2e] shadow-2xl">
       {/* Stage Top Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-ocean-700/40 bg-gradient-to-r from-[#112437] to-[#152e46] px-3.5 py-2.5 sm:px-4 sm:py-3">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-ocean-700/40 bg-gradient-to-r from-[#112437] to-[#152e46] px-3.5 py-2.5 sm:px-4 sm:py-3 rounded-t-2xl">
         <div className="flex items-center gap-2 sm:gap-2.5">
           <span
             className={`flex h-2.5 w-2.5 rounded-full ${
@@ -680,23 +680,63 @@ export default function CameraStage({
           </div>
 
           {/* Min Confidence with Interactive Tooltip Popover */}
-          <div className="relative flex items-center gap-2">
-            <div className="flex items-center gap-1">
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5">
               <span className="text-slate-300">
                 Min Confidence: {(minConfidence * 100).toFixed(0)}%
               </span>
-              <button
-                type="button"
-                onClick={() => setShowConfidenceTooltip((v) => !v)}
-                onMouseEnter={() => setShowConfidenceTooltip(true)}
-                onMouseLeave={() => setShowConfidenceTooltip(false)}
-                title="What is Min Confidence?"
-                className="rounded-full p-0.5 text-sky-400 hover:text-gold-200 focus:outline-none transition"
-                aria-label="Explain Min Confidence"
-              >
-                <HelpCircle className="h-3.5 w-3.5" />
-              </button>
+
+              {/* Tooltip trigger wrapped in relative container */}
+              <div className="relative inline-flex items-center">
+                <button
+                  type="button"
+                  onClick={() => setShowConfidenceTooltip((v) => !v)}
+                  onMouseEnter={() => setShowConfidenceTooltip(true)}
+                  onMouseLeave={() => setShowConfidenceTooltip(false)}
+                  className="rounded-full p-1 text-sky-400 hover:text-gold-200 focus:outline-none transition"
+                  aria-label="Explain Min Confidence"
+                >
+                  <HelpCircle className="h-4 w-4" />
+                </button>
+
+                {/* Accessible Info Popover Tooltip (Centered on button, never clipped) */}
+                {showConfidenceTooltip && (
+                  <div
+                    className="absolute top-full left-1/2 -translate-x-1/2 z-50 mt-2 w-72 sm:w-80 max-w-[calc(100vw-40px)] rounded-xl border border-ocean-600/70 bg-[#0e2135] p-3.5 text-xs text-slate-200 shadow-2xl backdrop-blur-md pointer-events-auto"
+                    onMouseEnter={() => setShowConfidenceTooltip(true)}
+                    onMouseLeave={() => setShowConfidenceTooltip(false)}
+                  >
+                    <div className="flex items-center justify-between pb-1.5 border-b border-ocean-700/50 mb-2">
+                      <span className="font-bold text-white flex items-center gap-1.5">
+                        <Info className="h-3.5 w-3.5 text-gold-200" />
+                        Min Confidence ({(minConfidence * 100).toFixed(0)}%)
+                      </span>
+                      <button
+                        onClick={() => setShowConfidenceTooltip(false)}
+                        className="rounded p-0.5 text-slate-400 hover:text-white"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
+                    <p className="text-[11px] leading-relaxed text-slate-300">
+                      Sets how strictly MediaPipe requires a hand match before plotting 21 3D landmarks:
+                    </p>
+                    <div className="mt-2 space-y-1.5 text-[11px]">
+                      <div className="rounded-lg bg-[#08121d] p-2 border border-ocean-800">
+                        <strong className="text-sky-300">Lower (25%–35%):</strong> Easier detection in dim light, rapid motion, or partial angles, with slight landmark jitter.
+                      </div>
+                      <div className="rounded-lg bg-[#08121d] p-2 border border-ocean-800">
+                        <strong className="text-amber-300">Higher (50%–70%):</strong> Stricter detection; requires a crisp, well-lit hand, filtering out background false-positives.
+                      </div>
+                    </div>
+                    <p className="mt-2 text-[10px] text-sky-200/80">
+                      Default <strong>35%–40%</strong> is recommended for fluid, responsive studio capture.
+                    </p>
+                  </div>
+                )}
+              </div>
             </div>
+
             <input
               type="range"
               min={0.25}
@@ -706,42 +746,6 @@ export default function CameraStage({
               onChange={(e) => setMinConfidence(parseFloat(e.target.value))}
               className="h-1.5 w-20 accent-terracotta-500 cursor-pointer"
             />
-
-            {/* Accessible Info Popover Tooltip */}
-            {showConfidenceTooltip && (
-              <div
-                className="absolute left-0 top-full z-50 mt-2 w-72 sm:w-80 rounded-xl border border-ocean-600/70 bg-[#0e2135] p-3 text-xs text-slate-200 shadow-2xl backdrop-blur-md"
-                onMouseEnter={() => setShowConfidenceTooltip(true)}
-                onMouseLeave={() => setShowConfidenceTooltip(false)}
-              >
-                <div className="flex items-center justify-between pb-1.5 border-b border-ocean-700/50 mb-2">
-                  <span className="font-bold text-white flex items-center gap-1.5">
-                    <Info className="h-3.5 w-3.5 text-gold-200" />
-                    Detection Confidence Threshold ({(minConfidence * 100).toFixed(0)}%)
-                  </span>
-                  <button
-                    onClick={() => setShowConfidenceTooltip(false)}
-                    className="rounded p-0.5 text-slate-400 hover:text-white"
-                  >
-                    <X className="h-3 w-3" />
-                  </button>
-                </div>
-                <p className="text-[11px] leading-relaxed text-slate-300">
-                  Sets how certain MediaPipe must be before recognizing a hand and plotting its 21 3D landmarks:
-                </p>
-                <div className="mt-2 space-y-1.5 text-[11px]">
-                  <div className="rounded-lg bg-[#08121d] p-2 border border-ocean-800">
-                    <strong className="text-sky-300">Lower (25%–35%):</strong> Easier detection in dim light, quick motion, or partial angles, but may have minor landmark jitter.
-                  </div>
-                  <div className="rounded-lg bg-[#08121d] p-2 border border-ocean-800">
-                    <strong className="text-amber-300">Higher (50%–70%):</strong> Stricter detection; requires a crisp, well-lit hand, filtering out background false-positives.
-                  </div>
-                </div>
-                <p className="mt-2 text-[10px] text-sky-200/80">
-                  Default <strong>35%–40%</strong> is recommended for fluid, responsive studio capture.
-                </p>
-              </div>
-            )}
           </div>
 
           <div className="flex items-center gap-2">
@@ -1019,7 +1023,7 @@ export default function CameraStage({
       </div>
 
       {/* Capture Action Deck (Responsive touch-friendly layout) */}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-ocean-700/50 bg-gradient-to-r from-[#102235] to-[#142b44] px-4 py-3">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-ocean-700/50 bg-gradient-to-r from-[#102235] to-[#142b44] px-4 py-3 rounded-b-2xl">
         <div className="flex items-center gap-2 text-xs text-sky-200/80">
           <Hand className="h-4 w-4 text-terracotta-400 shrink-0" />
           <span>
