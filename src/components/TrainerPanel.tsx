@@ -287,7 +287,9 @@ export default function TrainerPanel({
             <>
               <Loader2 className="h-4 w-4 animate-spin" />
               <span>
-                Training Epoch {latestEpoch?.epoch ?? 0}/{config.epochs}…
+                {latestEpoch
+                  ? `Training Epoch ${latestEpoch.epoch}/${config.epochs}…`
+                  : "Initializing Neural Network…"}
               </span>
             </>
           ) : (
