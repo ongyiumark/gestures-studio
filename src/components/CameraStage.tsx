@@ -44,7 +44,7 @@ export default function CameraStage({
 }: CameraStageProps) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const mediapipeCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const activeCanvasRef = useRef<HTMLCanvasElement | null>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const landmarkerRef = useRef<any>(null);
   const rafRef = useRef<number | null>(null);
@@ -89,7 +89,8 @@ export default function CameraStage({
           text.startsWith("INFO: ") ||
           text.includes("gl_context.cc") ||
           text.includes("GL version mismatch") ||
-          text.includes("Error querying for GL extensions")
+          text.includes("Error querying for GL extensions") ||
+          text.includes("Aborted()")
         ) {
           console.info(...args);
           return;
@@ -115,36 +116,33 @@ export default function CameraStage({
           );
         }
 
-        const candidates: { path: string; delegate: "CPU" | "GPU" }[] = [
-          { path: "/mediapipe/models/hand_landmarker.task", delegate: "CPU" },
+        const candidates: { path: string; delegate: "GPU" | "CPU" }[] = [
           { path: "/mediapipe/models/hand_landmarker.task", delegate: "GPU" },
-          {
-            path: "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task",
-            delegate: "CPU",
-          },
+          { path: "/mediapipe/models/hand_landmarker.task", delegate: "CPU" },
           {
             path: "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task",
             delegate: "GPU",
+          },
+          {
+            path: "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task",
+            delegate: "CPU",
           },
         ];
 
         let landmarker = null;
         let lastError: unknown = null;
-
-        // Explicit DOM canvas is passed to createFromOptions to prevent
-        // Safari/WebKit from falling back to a 1x1 OffscreenCanvas which
-        // causes gl_context.cc extension query crashes and WASM aborts.
-        const createHelperCanvas = () => {
-          const c = mediapipeCanvasRef.current || document.createElement("canvas");
-          c.width = 640;
-          c.height = 480;
-          return c;
-        };
+        let activeCanvas: HTMLCanvasElement | null = null;
 
         for (const candidate of candidates) {
           if (cancelled) return;
+          const helperCanvas = document.createElement("canvas");
+          helperCanvas.width = 640;
+          helperCanvas.height = 480;
+          helperCanvas.style.display = "none";
+          helperCanvas.setAttribute("aria-hidden", "true");
+          document.body.appendChild(helperCanvas);
+
           try {
-            const helperCanvas = createHelperCanvas();
             landmarker = await HandLandmarker.createFromOptions(wasmFileset, {
               baseOptions: {
                 modelAssetPath: candidate.path,
@@ -157,9 +155,11 @@ export default function CameraStage({
               minHandPresenceConfidence: minConfidence,
               minTrackingConfidence: minConfidence,
             });
+            activeCanvas = helperCanvas;
             break;
           } catch (err) {
             lastError = err;
+            helperCanvas.remove();
             console.warn(
               `HandLandmarker init attempt failed (${candidate.path}, ${candidate.delegate}):`,
               err
@@ -177,6 +177,7 @@ export default function CameraStage({
         }
 
         landmarkerRef.current = landmarker;
+        activeCanvasRef.current = activeCanvas;
         setModelReady(true);
         onModelStatusChange(true);
       } catch (err) {
@@ -197,6 +198,10 @@ export default function CameraStage({
       if (landmarkerRef.current) {
         landmarkerRef.current.close();
         landmarkerRef.current = null;
+      }
+      if (activeCanvasRef.current) {
+        activeCanvasRef.current.remove();
+        activeCanvasRef.current = null;
       }
     };
   }, [onModelStatusChange, retryCount, maxHands, minConfidence]);
@@ -664,15 +669,6 @@ export default function CameraStage({
           className={`pointer-events-none absolute inset-0 h-full w-full object-cover ${
             mirrored ? "-scale-x-100" : ""
           }`}
-        />
-
-        {/* Dedicated WebGL binding canvas for MediaPipe Tasks Vision */}
-        <canvas
-          ref={mediapipeCanvasRef}
-          width={640}
-          height={480}
-          style={{ display: "none" }}
-          aria-hidden="true"
         />
 
         {/* Shutter Flash */}
