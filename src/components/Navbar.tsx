@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import Image from "next/image";
 import {
   Activity,
   BookOpen,
@@ -47,8 +48,15 @@ export default function Navbar({
       <div className="mx-auto flex max-w-[1600px] flex-wrap items-center justify-between gap-3 px-3.5 py-2.5 sm:px-6 sm:py-3">
         {/* Brand Identity */}
         <div className="flex items-center gap-2.5 sm:gap-3">
-          <div className="flex h-9 w-9 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-terracotta-500 to-terracotta-700 shadow-md shadow-terracotta-950/40">
-            <Hand className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
+          <div className="relative h-9 w-9 sm:h-10 sm:w-10 shrink-0 overflow-hidden rounded-xl border border-ocean-600/40 shadow-md shadow-terracotta-950/40">
+            <Image
+              src="/icon.png"
+              alt="Gesture Studio Icon"
+              width={40}
+              height={40}
+              className="h-full w-full object-cover"
+              priority
+            />
           </div>
           <div>
             <div className="flex items-center gap-2">
