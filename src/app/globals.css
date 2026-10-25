@@ -1,0 +1,45 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: #0c131d;
+  --foreground: #f1f5f9;
+}
+
+body {
+  color: var(--foreground);
+  background: var(--background);
+  font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Heritage terracotta scrollbars (nod to original #c74a11 / rgba(199, 74, 17, 0.8)) */
+::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(12, 19, 29, 0.75);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(199, 74, 17, 0.7);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(234, 88, 12, 0.95);
+}
+
+::-webkit-scrollbar-thumb:window-inactive {
+  background: rgba(199, 74, 17, 0.4);
+}
+
+::selection {
+  background-color: rgba(40, 99, 152, 0.5);
+  color: #ffffff;
+}
