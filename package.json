@@ -1,6 +1,7 @@
 {
   "name": "hand-pose-studio",
   "version": "2.0.0",
+  "license": "MIT",
   "private": true,
   "scripts": {
     "copy-wasm": "node scripts/copy-mediapipe-wasm.mjs",
