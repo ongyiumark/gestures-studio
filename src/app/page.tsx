@@ -20,6 +20,7 @@ import {
 import { getClassColor } from "@/lib/landmarks";
 import {
   deserializeTFModel,
+  ensureTFBackend,
   evaluateKNN,
   predictWithKNN,
   predictWithMLP,
@@ -99,6 +100,9 @@ export default function HandPoseStudioPage() {
   useEffect(() => {
     let mounted = true;
     async function hydrate() {
+      // Warm up TF.js CPU backend in background on mount
+      ensureTFBackend().catch(() => {});
+
       const prefs = loadPreferencesFromLocalStorage();
       if (!prefs.hasCompletedTutorial) {
         setTutorialOpen(true);
@@ -291,6 +295,9 @@ export default function HandPoseStudioPage() {
     try {
       setIsTraining(true);
       setTrainingProgress([]);
+
+      // Give React one frame to paint the button's loading state & spinner immediately
+      await new Promise((resolve) => setTimeout(resolve, 60));
 
       const result = await trainMLPClassifier(
         samples,
