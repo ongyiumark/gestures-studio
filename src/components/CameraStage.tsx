@@ -8,6 +8,8 @@ import {
   EyeOff,
   FlipHorizontal,
   Hand,
+  HelpCircle,
+  Info,
   Loader2,
   Play,
   RefreshCw,
@@ -15,6 +17,7 @@ import {
   Sparkles,
   Square,
   Timer,
+  X,
   Zap,
 } from "lucide-react";
 import {
@@ -61,6 +64,7 @@ export default function CameraStage({
   const [maxHands, setMaxHands] = useState<1 | 2>(2);
   const [minConfidence, setMinConfidence] = useState<number>(0.35);
   const [showSettings, setShowSettings] = useState<boolean>(false);
+  const [showConfidenceTooltip, setShowConfidenceTooltip] = useState<boolean>(false);
 
   const [activeDelegate, setActiveDelegate] = useState<"CPU" | "GPU">("CPU");
   const [videoStatus, setVideoStatus] = useState<string>("Connecting…");
@@ -560,10 +564,10 @@ export default function CameraStage({
   const handDetected = liveHands.length > 0;
 
   return (
-    <div className="flex flex-col rounded-2xl border border-slate-800/90 bg-slate-900/70 shadow-xl overflow-hidden">
+    <div className="flex flex-col rounded-2xl border border-ocean-700/50 bg-[#101e2e] shadow-2xl overflow-hidden">
       {/* Stage Top Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800/80 bg-slate-900/95 px-4 py-2.5">
-        <div className="flex items-center gap-2.5">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-ocean-700/40 bg-gradient-to-r from-[#112437] to-[#152e46] px-3.5 py-2.5 sm:px-4 sm:py-3">
+        <div className="flex items-center gap-2 sm:gap-2.5">
           <span
             className={`flex h-2.5 w-2.5 rounded-full ${
               !cameraOn
@@ -573,7 +577,7 @@ export default function CameraStage({
                 : "bg-amber-400"
             }`}
           />
-          <span className="text-xs font-semibold text-slate-200">
+          <span className="text-xs font-semibold text-slate-100">
             {!cameraOn
               ? "Camera Paused"
               : handDetected
@@ -591,8 +595,8 @@ export default function CameraStage({
             title="Mirror Video Feed"
             className={`flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-medium transition ${
               mirrored
-                ? "bg-slate-800 text-cyan-300 border border-cyan-500/30"
-                : "bg-slate-800/50 text-slate-400 hover:text-slate-200"
+                ? "bg-[#183959] text-sky-200 border border-ocean-500/50"
+                : "bg-slate-900/60 text-slate-400 hover:text-slate-200 border border-transparent"
             }`}
           >
             <FlipHorizontal className="h-3.5 w-3.5" />
@@ -604,8 +608,8 @@ export default function CameraStage({
             title="Toggle 21-Keypoint Skeleton Overlay"
             className={`flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-medium transition ${
               showSkeleton
-                ? "bg-slate-800 text-cyan-300 border border-cyan-500/30"
-                : "bg-slate-800/50 text-slate-400 hover:text-slate-200"
+                ? "bg-[#183959] text-sky-200 border border-ocean-500/50"
+                : "bg-slate-900/60 text-slate-400 hover:text-slate-200 border border-transparent"
             }`}
           >
             {showSkeleton ? (
@@ -618,14 +622,15 @@ export default function CameraStage({
 
           <button
             onClick={() => setShowSettings((s) => !s)}
-            title="Tracking Settings"
+            title="Tracking Settings (Confidence, Engine, Hands)"
             className={`flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-medium transition ${
               showSettings
-                ? "bg-indigo-500/20 text-indigo-300 border border-indigo-500/40"
-                : "bg-slate-800/50 text-slate-400 hover:text-slate-200"
+                ? "bg-amber-500/20 text-gold-200 border border-amber-500/40"
+                : "bg-slate-900/60 text-slate-400 hover:text-slate-200 border border-transparent"
             }`}
           >
             <Settings2 className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Controls</span>
           </button>
 
           <button
@@ -654,17 +659,17 @@ export default function CameraStage({
 
       {/* Collapsible Tracking Settings Bar */}
       {showSettings && (
-        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-800 bg-slate-950/80 px-4 py-2.5 text-xs">
+        <div className="relative flex flex-wrap items-center justify-between gap-y-2.5 gap-x-4 border-b border-ocean-700/40 bg-[#0c1825]/95 px-3.5 py-2.5 text-xs text-slate-300 sm:px-4">
           <div className="flex items-center gap-2">
-            <span className="text-slate-400">Max Hands:</span>
-            <div className="flex rounded-lg border border-slate-800 bg-slate-900 p-0.5">
+            <span className="text-slate-300">Max Hands:</span>
+            <div className="flex rounded-lg border border-ocean-700/60 bg-[#08111a] p-0.5">
               {[1, 2].map((n) => (
                 <button
                   key={n}
                   onClick={() => setMaxHands(n as 1 | 2)}
                   className={`rounded-md px-2.5 py-0.5 font-medium transition ${
                     maxHands === n
-                      ? "bg-cyan-500 text-slate-950"
+                      ? "bg-ocean-600 text-white font-semibold shadow-sm"
                       : "text-slate-400 hover:text-white"
                   }`}
                 >
@@ -674,10 +679,24 @@ export default function CameraStage({
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            <span className="text-slate-400">
-              Min Confidence: {(minConfidence * 100).toFixed(0)}%
-            </span>
+          {/* Min Confidence with Interactive Tooltip Popover */}
+          <div className="relative flex items-center gap-2">
+            <div className="flex items-center gap-1">
+              <span className="text-slate-300">
+                Min Confidence: {(minConfidence * 100).toFixed(0)}%
+              </span>
+              <button
+                type="button"
+                onClick={() => setShowConfidenceTooltip((v) => !v)}
+                onMouseEnter={() => setShowConfidenceTooltip(true)}
+                onMouseLeave={() => setShowConfidenceTooltip(false)}
+                title="What is Min Confidence?"
+                className="rounded-full p-0.5 text-sky-400 hover:text-gold-200 focus:outline-none transition"
+                aria-label="Explain Min Confidence"
+              >
+                <HelpCircle className="h-3.5 w-3.5" />
+              </button>
+            </div>
             <input
               type="range"
               min={0.25}
@@ -685,16 +704,52 @@ export default function CameraStage({
               step={0.05}
               value={minConfidence}
               onChange={(e) => setMinConfidence(parseFloat(e.target.value))}
-              className="h-1.5 w-20 accent-cyan-400 cursor-pointer"
+              className="h-1.5 w-20 accent-terracotta-500 cursor-pointer"
             />
+
+            {/* Accessible Info Popover Tooltip */}
+            {showConfidenceTooltip && (
+              <div
+                className="absolute left-0 top-full z-50 mt-2 w-72 sm:w-80 rounded-xl border border-ocean-600/70 bg-[#0e2135] p-3 text-xs text-slate-200 shadow-2xl backdrop-blur-md"
+                onMouseEnter={() => setShowConfidenceTooltip(true)}
+                onMouseLeave={() => setShowConfidenceTooltip(false)}
+              >
+                <div className="flex items-center justify-between pb-1.5 border-b border-ocean-700/50 mb-2">
+                  <span className="font-bold text-white flex items-center gap-1.5">
+                    <Info className="h-3.5 w-3.5 text-gold-200" />
+                    Detection Confidence Threshold ({(minConfidence * 100).toFixed(0)}%)
+                  </span>
+                  <button
+                    onClick={() => setShowConfidenceTooltip(false)}
+                    className="rounded p-0.5 text-slate-400 hover:text-white"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </div>
+                <p className="text-[11px] leading-relaxed text-slate-300">
+                  Sets how certain MediaPipe must be before recognizing a hand and plotting its 21 3D landmarks:
+                </p>
+                <div className="mt-2 space-y-1.5 text-[11px]">
+                  <div className="rounded-lg bg-[#08121d] p-2 border border-ocean-800">
+                    <strong className="text-sky-300">Lower (25%–35%):</strong> Easier detection in dim light, quick motion, or partial angles, but may have minor landmark jitter.
+                  </div>
+                  <div className="rounded-lg bg-[#08121d] p-2 border border-ocean-800">
+                    <strong className="text-amber-300">Higher (50%–70%):</strong> Stricter detection; requires a crisp, well-lit hand, filtering out background false-positives.
+                  </div>
+                </div>
+                <p className="mt-2 text-[10px] text-sky-200/80">
+                  Default <strong>35%–40%</strong> is recommended for fluid, responsive studio capture.
+                </p>
+              </div>
+            )}
           </div>
 
           <div className="flex items-center gap-2">
-            <span className="text-slate-400">Burst:</span>
+            <span className="text-slate-300">Burst:</span>
             <select
               value={burstTarget}
               onChange={(e) => setBurstTarget(Number(e.target.value))}
-              className="rounded-md border border-slate-700 bg-slate-900 px-2 py-0.5 text-slate-200"
+              className="rounded-md border border-ocean-700/60 bg-[#08111a] px-2 py-0.5 text-slate-100"
             >
               <option value={10}>10 photos</option>
               <option value={15}>15 photos</option>
@@ -703,8 +758,8 @@ export default function CameraStage({
           </div>
 
           <div className="flex items-center gap-2">
-            <span className="text-slate-400">Engine:</span>
-            <div className="flex rounded-lg border border-slate-800 bg-slate-900 p-0.5">
+            <span className="text-slate-300">Engine:</span>
+            <div className="flex rounded-lg border border-ocean-700/60 bg-[#08111a] p-0.5">
               {(["CPU", "GPU"] as const).map((d) => (
                 <button
                   key={d}
@@ -714,7 +769,7 @@ export default function CameraStage({
                   }}
                   className={`rounded-md px-2.5 py-0.5 font-medium transition ${
                     activeDelegate === d
-                      ? "bg-cyan-500 text-slate-950"
+                      ? "bg-ocean-600 text-white font-semibold shadow-sm"
                       : "text-slate-400 hover:text-white"
                   }`}
                 >
@@ -727,7 +782,7 @@ export default function CameraStage({
       )}
 
       {/* Video & Canvas Stage */}
-      <div className="relative aspect-[4/3] w-full bg-slate-950 flex items-center justify-center overflow-hidden">
+      <div className="relative aspect-[4/3] w-full bg-[#08111a] flex items-center justify-center overflow-hidden">
         <video
           ref={videoRef}
           playsInline
@@ -758,7 +813,7 @@ export default function CameraStage({
         />
 
         {/* Live Diagnostics HUD */}
-        <div className="absolute top-2.5 left-2.5 z-20 flex flex-col gap-1 rounded-lg border border-white/10 bg-slate-950/80 px-2.5 py-1.5 font-mono text-[10px] text-slate-300 backdrop-blur-sm pointer-events-none">
+        <div className="absolute top-2.5 left-2.5 z-20 flex flex-col gap-1 rounded-lg border border-ocean-700/60 bg-[#081320]/85 px-2.5 py-1.5 font-mono text-[10px] text-slate-200 backdrop-blur-sm pointer-events-none">
           <div className="flex items-center gap-1.5">
             <span
               className={`h-2 w-2 rounded-full ${
@@ -773,7 +828,7 @@ export default function CameraStage({
             <span
               className={`h-2 w-2 rounded-full ${
                 modelReady
-                  ? "bg-cyan-400 shadow-[0_0_6px_#22d3ee]"
+                  ? "bg-sky-400 shadow-[0_0_6px_#38bdf8]"
                   : "bg-amber-400"
               }`}
             />
@@ -889,7 +944,7 @@ export default function CameraStage({
             </div>
             <button
               onClick={() => setCameraOn(true)}
-              className="mt-1 flex items-center gap-1.5 rounded-lg bg-cyan-500 px-4 py-2 text-xs font-semibold text-slate-950 transition hover:bg-cyan-400"
+              className="mt-1 flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-terracotta-500 to-terracotta-600 px-4 py-2 text-xs font-bold text-white shadow-sm shadow-terracotta-950/40 transition hover:from-terracotta-400 hover:to-terracotta-500"
             >
               <Play className="h-3.5 w-3.5" />
               <span>Start Camera</span>
@@ -899,7 +954,7 @@ export default function CameraStage({
 
         {/* Active Recording Class Badge Overlay (Top-Left) */}
         {activeClass && cameraOn && (
-          <div className="pointer-events-none absolute top-3 left-3 flex items-center gap-2 rounded-lg border border-slate-700/80 bg-slate-950/85 px-3 py-1.5 backdrop-blur-md">
+          <div className="pointer-events-none absolute top-3 left-3 flex items-center gap-2 rounded-lg border border-ocean-700/70 bg-[#0a1624]/90 px-3 py-1.5 backdrop-blur-md">
             <span
               className="h-2.5 w-2.5 rounded-full"
               style={{ backgroundColor: activeClass.color }}
@@ -915,13 +970,13 @@ export default function CameraStage({
 
         {/* Live Real-Time Prediction HUD Overlay */}
         {classifierActive && livePrediction && handDetected && (
-          <div className="pointer-events-none absolute bottom-3 left-3 right-3 flex flex-col gap-2 rounded-xl border border-cyan-500/40 bg-slate-950/90 p-3 shadow-2xl backdrop-blur-md sm:flex-row sm:items-center sm:justify-between">
+          <div className="pointer-events-none absolute bottom-3 left-3 right-3 flex flex-col gap-2 rounded-xl border border-ocean-500/50 bg-[#0b1a2b]/95 p-3 shadow-2xl backdrop-blur-md sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-3">
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-cyan-500/20 text-cyan-300">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-ocean-500/20 text-sky-300">
                 <Sparkles className="h-5 w-5" />
               </div>
               <div>
-                <div className="text-[10px] font-semibold uppercase tracking-wider text-cyan-400">
+                <div className="text-[10px] font-bold uppercase tracking-wider text-sky-300">
                   Live Prediction
                 </div>
                 <div className="flex items-baseline gap-2">
@@ -963,24 +1018,24 @@ export default function CameraStage({
         )}
       </div>
 
-      {/* Capture Action Deck */}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-800/80 bg-slate-900/95 px-4 py-3">
-        <div className="flex items-center gap-2 text-xs text-slate-400">
-          <Hand className="h-4 w-4 text-cyan-400 shrink-0" />
+      {/* Capture Action Deck (Responsive touch-friendly layout) */}
+      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-ocean-700/50 bg-gradient-to-r from-[#102235] to-[#142b44] px-4 py-3">
+        <div className="flex items-center gap-2 text-xs text-sky-200/80">
+          <Hand className="h-4 w-4 text-terracotta-400 shrink-0" />
           <span>
             Shortcut: press{" "}
-            <kbd className="rounded border border-slate-700 bg-slate-800 px-1.5 py-0.5 font-mono text-[11px] text-slate-200">
+            <kbd className="rounded border border-ocean-600/50 bg-[#091522] px-1.5 py-0.5 font-mono text-[11px] text-slate-200">
               Space
             </kbd>{" "}
             to capture
           </span>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
           <button
             onClick={captureNow}
             disabled={!cameraOn || !activeClass}
-            className="flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 px-4 py-2 text-xs font-bold text-white shadow-md shadow-cyan-500/20 transition hover:from-cyan-400 hover:to-blue-500 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
+            className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-terracotta-500 to-terracotta-600 px-4 py-2.5 text-xs font-bold text-white shadow-md shadow-terracotta-950/40 transition hover:from-terracotta-400 hover:to-terracotta-500 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
           >
             <Camera className="h-4 w-4" />
             <span>Capture Photo</span>
@@ -990,9 +1045,9 @@ export default function CameraStage({
             onClick={startTimerCapture}
             disabled={!cameraOn || !activeClass || countdown !== null}
             title="3-second countdown before capturing"
-            className="flex items-center gap-1.5 rounded-xl border border-slate-700 bg-slate-800 px-3 py-2 text-xs font-semibold text-slate-200 transition hover:border-slate-600 hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-40"
+            className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 rounded-xl border border-ocean-600/60 bg-[#163554]/90 px-3.5 py-2.5 text-xs font-semibold text-slate-100 transition hover:bg-[#1f456c] disabled:cursor-not-allowed disabled:opacity-40"
           >
-            <Timer className="h-4 w-4 text-amber-400" />
+            <Timer className="h-4 w-4 text-gold-300" />
             <span>3s Timer</span>
           </button>
 
@@ -1000,10 +1055,10 @@ export default function CameraStage({
             onClick={toggleBurstCapture}
             disabled={!cameraOn || !activeClass}
             title={`Automatically capture ${burstTarget} frames while your hand is in view`}
-            className={`flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-semibold transition ${
+            className={`flex-1 sm:flex-initial flex items-center justify-center gap-1.5 rounded-xl px-3.5 py-2.5 text-xs font-semibold transition ${
               isBursting
                 ? "border border-rose-500/50 bg-rose-500/20 text-rose-300"
-                : "border border-amber-500/30 bg-amber-500/10 text-amber-300 hover:bg-amber-500/20"
+                : "border border-gold-300/40 bg-gold-200/15 text-gold-100 hover:bg-gold-200/25"
             } disabled:cursor-not-allowed disabled:opacity-40`}
           >
             {isBursting ? (
@@ -1015,7 +1070,7 @@ export default function CameraStage({
               </>
             ) : (
               <>
-                <Zap className="h-4 w-4" />
+                <Zap className="h-4 w-4 text-gold-300" />
                 <span>Auto-Burst ({burstTarget})</span>
               </>
             )}

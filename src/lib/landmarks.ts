@@ -57,16 +57,16 @@ export const HAND_CONNECTIONS: [number, number][] = [
 ];
 
 export const CLASS_COLORS = [
-  "#38bdf8", // sky-400
-  "#a78bfa", // violet-400
-  "#34d399", // emerald-400
-  "#fbbf24", // amber-400
-  "#f472b6", // pink-400
-  "#fb7185", // rose-400
-  "#60a5fa", // blue-400
-  "#4ade80", // green-400
-  "#f97316", // orange-500
-  "#2dd4bf", // teal-400
+  "#ea580c", // terracotta-500 (original theme heritage)
+  "#38bdf8", // ocean-sky-400
+  "#10b981", // emerald-500
+  "#f59e0b", // amber-gold-500
+  "#8b5cf6", // violet-500
+  "#f43f5e", // rose-500
+  "#06b6d4", // cyan-500
+  "#84cc16", // lime-500
+  "#ec4899", // pink-500
+  "#6366f1", // indigo-500
 ];
 
 export function getClassColor(index: number): string {
@@ -101,9 +101,9 @@ export function drawHandsOnCanvas(
 
     const primaryColor =
       accentColor ||
-      (hand.handedness === "Right" ? "#22d3ee" : "#a855f7");
+      (hand.handedness === "Right" ? "#38bdf8" : "#fb923c");
     const jointColor =
-      hand.handedness === "Right" ? "#f43f5e" : "#ec4899";
+      hand.handedness === "Right" ? "#ea580c" : "#f59e0b";
 
     // Draw skeleton connections
     ctx.save();

@@ -50,7 +50,7 @@ function SampleCard({
   const primaryHand = sample.hands?.[0];
 
   return (
-    <div className="group relative aspect-[4/3] overflow-hidden rounded-xl border border-slate-800 bg-slate-950 shadow-sm transition hover:border-slate-600">
+    <div className="group relative aspect-[4/3] overflow-hidden rounded-xl border border-ocean-800/60 bg-[#08121d] shadow-sm transition hover:border-ocean-500">
       {sample.imageDataUrl ? (
         <Image
           src={sample.imageDataUrl}
@@ -61,7 +61,7 @@ function SampleCard({
           className="object-cover"
         />
       ) : (
-        <div className="flex h-full w-full items-center justify-center bg-slate-900 text-[10px] text-slate-500">
+        <div className="flex h-full w-full items-center justify-center bg-[#0d1a29] text-[10px] text-slate-400">
           3D Landmarks
         </div>
       )}
@@ -75,7 +75,7 @@ function SampleCard({
 
       {/* Handedness & Confidence Badge */}
       {primaryHand && (
-        <div className="pointer-events-none absolute bottom-1.5 left-1.5 flex items-center gap-1 rounded bg-slate-950/85 px-1.5 py-0.5 text-[10px] font-medium text-slate-200 backdrop-blur-sm">
+        <div className="pointer-events-none absolute bottom-1.5 left-1.5 flex items-center gap-1 rounded bg-[#071320]/90 px-1.5 py-0.5 text-[10px] font-medium text-slate-200 backdrop-blur-sm">
           <span
             className="h-1.5 w-1.5 rounded-full"
             style={{ backgroundColor: accentColor }}
@@ -87,11 +87,11 @@ function SampleCard({
         </div>
       )}
 
-      {/* Delete Sample Button */}
+      {/* Delete Sample Button (Terracotta heritage #9e3201) */}
       <button
         onClick={() => onDelete(sample.id)}
         title="Delete sample"
-        className="absolute top-1.5 right-1.5 flex h-6 w-6 items-center justify-center rounded-md bg-rose-600/90 text-white opacity-0 shadow transition group-hover:opacity-100 hover:bg-rose-500"
+        className="absolute top-1.5 right-1.5 flex h-6 w-6 items-center justify-center rounded-md bg-terracotta-700/90 text-white opacity-0 shadow transition group-hover:opacity-100 hover:bg-terracotta-600"
       >
         <X className="h-3.5 w-3.5" />
       </button>
@@ -177,10 +177,10 @@ export default function ClassManager({
   return (
     <div className="flex flex-col gap-4">
       {/* Pose Classes Card */}
-      <div className="rounded-2xl border border-slate-800/90 bg-slate-900/70 p-4 shadow-xl">
+      <div className="rounded-2xl border border-ocean-700/50 bg-[#101e2e]/90 p-4 shadow-xl">
         <div className="flex items-center justify-between gap-2 mb-3">
           <div className="flex items-center gap-2">
-            <FolderPlus className="h-4 w-4 text-cyan-400" />
+            <FolderPlus className="h-4 w-4 text-terracotta-400" />
             <h2 className="text-sm font-bold text-white">
               1. Gesture Classes ({classes.length})
             </h2>
@@ -188,7 +188,7 @@ export default function ClassManager({
           {samples.length > 0 && (
             <button
               onClick={onClearAll}
-              className="text-[11px] font-medium text-rose-400 hover:text-rose-300 hover:underline"
+              className="text-[11px] font-medium text-terracotta-400 hover:text-terracotta-300 hover:underline"
             >
               Reset Workspace
             </button>
@@ -202,12 +202,12 @@ export default function ClassManager({
             value={newClassInput}
             onChange={(e) => setNewClassInput(e.target.value)}
             placeholder="Enter new gesture class name (e.g. Peace)…"
-            className="flex-1 rounded-xl border border-slate-700/80 bg-slate-950 px-3 py-2 text-xs text-white placeholder-slate-500 focus:border-cyan-500 focus:outline-none"
+            className="flex-1 rounded-xl border border-ocean-700/60 bg-[#081320] px-3 py-2 text-xs text-white placeholder-slate-400 focus:border-ocean-500 focus:outline-none"
           />
           <button
             type="submit"
             disabled={!newClassInput.trim()}
-            className="flex items-center gap-1.5 rounded-xl bg-cyan-500 px-3.5 py-2 text-xs font-bold text-slate-950 transition hover:bg-cyan-400 disabled:cursor-not-allowed disabled:opacity-40"
+            className="flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-terracotta-500 to-terracotta-600 px-3.5 py-2 text-xs font-bold text-white shadow-sm shadow-terracotta-950/40 transition hover:from-terracotta-400 hover:to-terracotta-500 disabled:cursor-not-allowed disabled:opacity-40 active:scale-95"
           >
             <Plus className="h-4 w-4" />
             <span>Add Class</span>
@@ -217,13 +217,13 @@ export default function ClassManager({
         {/* Quick-Add Preset Chips */}
         {availablePresets.length > 0 && (
           <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
-            <span className="text-[11px] text-slate-500">Quick presets:</span>
+            <span className="text-[11px] text-slate-400">Quick presets:</span>
             {availablePresets.map((preset) => (
               <button
                 key={preset}
                 type="button"
                 onClick={() => onAddClass(preset)}
-                className="rounded-full border border-slate-800 bg-slate-950/80 px-2.5 py-0.5 text-[11px] font-medium text-slate-300 transition hover:border-cyan-500/40 hover:text-cyan-300"
+                className="rounded-full border border-ocean-700/60 bg-[#091522] px-2.5 py-0.5 text-[11px] font-medium text-sky-200 transition hover:border-ocean-500 hover:text-white"
               >
                 + {preset}
               </button>
@@ -244,8 +244,8 @@ export default function ClassManager({
                 onClick={() => !isEditing && onSelectClass(cls.name)}
                 className={`group flex cursor-pointer items-center justify-between gap-2 rounded-xl border p-2.5 transition ${
                   isSelected
-                    ? "border-cyan-500/60 bg-cyan-500/10 shadow-sm shadow-cyan-500/10"
-                    : "border-slate-800 bg-slate-950/60 hover:border-slate-700"
+                    ? "border-terracotta-500/70 bg-[#162e47] shadow-sm shadow-terracotta-950/20"
+                    : "border-ocean-800/60 bg-[#0a1624]/80 hover:border-ocean-700"
                 }`}
               >
                 <div className="flex min-w-0 flex-1 items-center gap-2.5">
@@ -267,11 +267,11 @@ export default function ClassManager({
                           if (e.key === "Escape") setEditingClass(null);
                         }}
                         autoFocus
-                        className="w-full rounded border border-cyan-500 bg-slate-900 px-2 py-0.5 text-xs text-white focus:outline-none"
+                        className="w-full rounded border border-ocean-500 bg-[#091522] px-2 py-0.5 text-xs text-white focus:outline-none"
                       />
                       <button
                         onClick={() => commitRename(cls.name)}
-                        className="rounded p-1 text-emerald-400 hover:bg-slate-800"
+                        className="rounded p-1 text-emerald-400 hover:bg-[#16304d]"
                       >
                         <Check className="h-3.5 w-3.5" />
                       </button>
@@ -283,12 +283,12 @@ export default function ClassManager({
                           {cls.name}
                         </span>
                         {isSelected && (
-                          <span className="rounded bg-cyan-500/20 px-1.5 py-0.2 text-[9px] font-semibold uppercase text-cyan-300">
+                          <span className="rounded bg-terracotta-500/20 px-1.5 py-0.2 text-[9px] font-bold uppercase tracking-wider text-terracotta-300">
                             Active
                           </span>
                         )}
                       </div>
-                      <div className="text-[11px] text-slate-400">
+                      <div className="text-[11px] text-sky-200/70">
                         {count} {count === 1 ? "sample" : "samples"}
                       </div>
                     </div>
@@ -304,14 +304,14 @@ export default function ClassManager({
                     <button
                       onClick={() => startRename(cls.name)}
                       title="Rename class"
-                      className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-800 hover:text-white"
+                      className="rounded-lg p-1.5 text-slate-400 hover:bg-[#16304d] hover:text-white"
                     >
                       <Edit3 className="h-3.5 w-3.5" />
                     </button>
                     <button
                       onClick={() => onDeleteClass(cls.name)}
                       title="Delete class and its samples"
-                      className="rounded-lg p-1.5 text-slate-400 hover:bg-rose-500/20 hover:text-rose-400"
+                      className="rounded-lg p-1.5 text-slate-400 hover:bg-terracotta-500/20 hover:text-terracotta-300"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                     </button>
@@ -324,22 +324,22 @@ export default function ClassManager({
       </div>
 
       {/* Captured Samples Gallery Card */}
-      <div className="rounded-2xl border border-slate-800/90 bg-slate-900/70 p-4 shadow-xl">
+      <div className="rounded-2xl border border-ocean-700/50 bg-[#101e2e]/90 p-4 shadow-xl">
         <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
           <div className="flex items-center gap-2">
-            <Layers className="h-4 w-4 text-cyan-400" />
+            <Layers className="h-4 w-4 text-sky-300" />
             <h3 className="text-sm font-bold text-white">
               Captured Samples ({displayedSamples.length})
             </h3>
           </div>
 
           <div className="flex items-center gap-2">
-            <div className="flex rounded-lg border border-slate-800 bg-slate-950 p-0.5 text-[11px]">
+            <div className="flex rounded-lg border border-ocean-700/60 bg-[#08121d] p-0.5 text-[11px]">
               <button
                 onClick={() => setGalleryFilter("active")}
-                className={`rounded-md px-2 py-0.5 font-medium transition ${
+                className={`rounded-md px-2.5 py-0.5 font-medium transition ${
                   galleryFilter === "active"
-                    ? "bg-slate-800 text-cyan-300"
+                    ? "bg-ocean-700 text-white font-semibold"
                     : "text-slate-400 hover:text-white"
                 }`}
               >
@@ -347,9 +347,9 @@ export default function ClassManager({
               </button>
               <button
                 onClick={() => setGalleryFilter("all")}
-                className={`rounded-md px-2 py-0.5 font-medium transition ${
+                className={`rounded-md px-2.5 py-0.5 font-medium transition ${
                   galleryFilter === "all"
-                    ? "bg-slate-800 text-cyan-300"
+                    ? "bg-ocean-700 text-white font-semibold"
                     : "text-slate-400 hover:text-white"
                 }`}
               >
@@ -362,8 +362,8 @@ export default function ClassManager({
               title="Toggle 21-keypoint skeleton on sample thumbnails"
               className={`flex items-center gap-1 rounded-lg border px-2 py-1 text-[11px] font-medium transition ${
                 showOverlayOnThumbs
-                  ? "border-cyan-500/30 bg-cyan-500/10 text-cyan-300"
-                  : "border-slate-800 bg-slate-950 text-slate-400"
+                  ? "border-ocean-500/50 bg-ocean-600/20 text-sky-200"
+                  : "border-ocean-800/60 bg-[#08121d] text-slate-400"
               }`}
             >
               <Eye className="h-3 w-3" />
@@ -373,24 +373,24 @@ export default function ClassManager({
         </div>
 
         {displayedSamples.length === 0 ? (
-          <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-slate-800 bg-slate-950/40 py-8 px-4 text-center">
-            <p className="text-xs font-medium text-slate-300">
+          <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-ocean-800/80 bg-[#081320]/60 py-8 px-4 text-center">
+            <p className="text-xs font-medium text-slate-200">
               No samples captured for{" "}
               {galleryFilter === "active" && activeClassName
                 ? `"${activeClassName}"`
                 : "this workspace"}{" "}
               yet.
             </p>
-            <p className="mt-1 text-[11px] text-slate-500">
+            <p className="mt-1 text-[11px] text-sky-200/70">
               Hold your hand in front of the camera and press{" "}
-              <kbd className="rounded border border-slate-700 bg-slate-800 px-1 py-0.5 font-mono text-[10px] text-slate-300">
+              <kbd className="rounded border border-ocean-600/50 bg-[#091522] px-1 py-0.5 font-mono text-[10px] text-slate-200">
                 Space
               </kbd>{" "}
               or use <strong>Auto-Burst</strong> to record samples quickly.
             </p>
           </div>
         ) : (
-          <div className="grid max-h-[290px] grid-cols-3 gap-2.5 overflow-y-auto pr-1 sm:grid-cols-4 md:grid-cols-5">
+          <div className="grid max-h-[300px] grid-cols-2 min-[420px]:grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2.5 overflow-y-auto pr-1">
             {displayedSamples
               .slice()
               .reverse()

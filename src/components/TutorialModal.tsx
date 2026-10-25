@@ -92,65 +92,65 @@ export default function TutorialModal({
   const isLast = currentIdx === TUTORIAL_STEPS.length - 1;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 p-4 backdrop-blur-sm">
-      <div className="relative flex w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-slate-800 bg-slate-900 shadow-2xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-3 sm:p-4 backdrop-blur-sm">
+      <div className="relative flex w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-ocean-700/60 bg-[#0e1d2f] shadow-2xl max-h-[90vh] overflow-y-auto">
         {/* Top Progress Bar */}
-        <div className="grid grid-cols-4 gap-1 bg-slate-950 p-1.5">
+        <div className="grid grid-cols-4 gap-1 bg-[#08121d] p-1.5">
           {TUTORIAL_STEPS.map((s, idx) => (
             <button
               key={s.stepNumber}
               onClick={() => setCurrentIdx(idx)}
               className={`h-1.5 rounded-full transition-all ${
-                idx <= currentIdx ? "bg-cyan-400" : "bg-slate-800"
+                idx <= currentIdx ? "bg-terracotta-500" : "bg-[#14263a]"
               }`}
             />
           ))}
         </div>
 
         {/* Header */}
-        <div className="flex items-center justify-between px-6 pt-5 pb-2">
-          <span className="rounded-full border border-cyan-500/30 bg-cyan-500/10 px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wider text-cyan-300">
+        <div className="flex items-center justify-between px-4 sm:px-6 pt-4 pb-2">
+          <span className="rounded-full border border-gold-300/40 bg-gold-200/15 px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wider text-gold-200">
             Step {step.stepNumber} of {TUTORIAL_STEPS.length}
           </span>
           <button
             onClick={onClose}
-            className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-800 hover:text-white"
+            className="rounded-lg p-1.5 text-slate-400 hover:bg-[#152e4a] hover:text-white"
           >
             <X className="h-4 w-4" />
           </button>
         </div>
 
         {/* Body */}
-        <div className="px-6 py-4">
-          <div className="flex items-center gap-3.5 mb-4">
+        <div className="px-4 sm:px-6 py-3 sm:py-4">
+          <div className="flex items-center gap-3.5 mb-3.5">
             <div
               className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br ${step.accent} text-white shadow-lg`}
             >
               <IconComponent className="h-6 w-6" />
             </div>
             <div>
-              <h2 className="text-lg font-extrabold text-white">
+              <h2 className="text-base sm:text-lg font-extrabold text-white">
                 {step.title}
               </h2>
-              <p className="text-xs text-slate-400">{step.subtitle}</p>
+              <p className="text-xs text-sky-200/70">{step.subtitle}</p>
             </div>
           </div>
 
-          <p className="text-xs leading-relaxed text-slate-300">
+          <p className="text-xs leading-relaxed text-slate-200">
             {step.description}
           </p>
 
-          <div className="mt-4 rounded-xl border border-slate-800 bg-slate-950/70 p-3.5">
-            <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2">
+          <div className="mt-4 rounded-xl border border-ocean-700/60 bg-[#081320] p-3 sm:p-3.5">
+            <div className="text-[11px] font-bold uppercase tracking-wider text-gold-200 mb-2">
               Helpful Tips
             </div>
             <ul className="space-y-2">
               {step.tips.map((tip, i) => (
                 <li
                   key={i}
-                  className="flex items-start gap-2 text-xs text-slate-300"
+                  className="flex items-start gap-2 text-xs text-slate-200"
                 >
-                  <CheckCircle2 className="h-3.5 w-3.5 text-cyan-400 shrink-0 mt-0.5" />
+                  <CheckCircle2 className="h-3.5 w-3.5 text-terracotta-400 shrink-0 mt-0.5" />
                   <span>{tip}</span>
                 </li>
               ))}
@@ -158,8 +158,8 @@ export default function TutorialModal({
           </div>
 
           {/* Privacy Guarantee Badge */}
-          <div className="mt-4 flex items-center gap-2 rounded-lg border border-emerald-500/20 bg-emerald-500/5 px-3 py-2 text-[11px] text-emerald-300">
-            <HardDrive className="h-3.5 w-3.5 shrink-0" />
+          <div className="mt-4 flex items-center gap-2 rounded-lg border border-emerald-500/30 bg-emerald-950/20 px-3 py-2 text-[11px] text-emerald-200">
+            <HardDrive className="h-3.5 w-3.5 shrink-0 text-emerald-400" />
             <span>
               <strong>100% Browser Local Storage:</strong> All photos and models
               stay privately on your device.
@@ -168,20 +168,20 @@ export default function TutorialModal({
         </div>
 
         {/* Footer Navigation */}
-        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-800 bg-slate-950/60 px-6 py-4">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-ocean-700/50 bg-[#0a1624] px-4 sm:px-6 py-3 sm:py-4">
           <button
             onClick={onLoadDemoAndClose}
-            className="flex items-center gap-1.5 rounded-lg border border-violet-500/30 bg-violet-500/10 px-3 py-1.5 text-xs font-semibold text-violet-300 transition hover:bg-violet-500/20"
+            className="flex items-center gap-1.5 rounded-lg border border-ocean-600/60 bg-[#163554] px-3 py-1.5 text-xs font-semibold text-sky-100 transition hover:bg-[#1f456c]"
           >
-            <Sparkles className="h-3.5 w-3.5" />
-            <span>Try with Demo Dataset</span>
+            <Sparkles className="h-3.5 w-3.5 text-gold-300" />
+            <span className="text-[11px] sm:text-xs">Try with Demo Dataset</span>
           </button>
 
           <div className="flex items-center gap-2">
             {currentIdx > 0 && (
               <button
                 onClick={() => setCurrentIdx((i) => i - 1)}
-                className="flex items-center gap-1 rounded-lg border border-slate-700 bg-slate-800 px-3 py-1.5 text-xs font-semibold text-slate-200 hover:bg-slate-700"
+                className="flex items-center gap-1 rounded-lg border border-ocean-700/60 bg-[#13273e] px-3 py-1.5 text-xs font-semibold text-slate-200 hover:bg-[#1a3857]"
               >
                 <ArrowLeft className="h-3.5 w-3.5" />
                 <span>Back</span>
@@ -191,7 +191,7 @@ export default function TutorialModal({
             {!isLast ? (
               <button
                 onClick={() => setCurrentIdx((i) => i + 1)}
-                className="flex items-center gap-1 rounded-lg bg-cyan-500 px-4 py-1.5 text-xs font-bold text-slate-950 hover:bg-cyan-400"
+                className="flex items-center gap-1 rounded-lg bg-gradient-to-r from-terracotta-500 to-terracotta-600 px-4 py-1.5 text-xs font-bold text-white hover:from-terracotta-400 hover:to-terracotta-500 shadow-sm shadow-terracotta-950/40"
               >
                 <span>Next</span>
                 <ArrowRight className="h-3.5 w-3.5" />
@@ -199,7 +199,7 @@ export default function TutorialModal({
             ) : (
               <button
                 onClick={onClose}
-                className="flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-cyan-500 to-blue-600 px-4 py-1.5 text-xs font-bold text-white hover:from-cyan-400 hover:to-blue-500"
+                className="flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-terracotta-500 to-terracotta-600 px-4 py-1.5 text-xs font-bold text-white hover:from-terracotta-400 hover:to-terracotta-500 shadow-md shadow-terracotta-950/40"
               >
                 <span>Start Using Studio</span>
               </button>

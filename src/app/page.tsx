@@ -379,45 +379,64 @@ export default function HandPoseStudioPage() {
         onToggleHelp={handleToggleQuickGuide}
       />
 
-      {/* Quick Studio Guide Banner (Stacked vertically on separate lines!) */}
+      {/* Quick Studio Guide Banner (Strictly stacked vertically with clear step badges) */}
       {showHelp && (
-        <div className="border-b border-cyan-500/30 bg-slate-900/95 px-4 py-3.5 sm:px-6">
-          <div className="mx-auto flex max-w-[1600px] items-start justify-between gap-4">
-            <div className="flex flex-col gap-2 text-xs text-slate-300">
-              <div className="flex items-center gap-2 font-bold text-cyan-300 text-sm">
-                <BookOpen className="h-4 w-4 shrink-0" />
+        <div className="border-b border-ocean-700/60 bg-gradient-to-r from-[#102337]/95 via-[#132d47]/95 to-[#102337]/95 px-3.5 py-3 sm:px-6 shadow-sm">
+          <div className="mx-auto flex max-w-[1600px] items-start justify-between gap-3">
+            <div className="flex flex-col gap-2.5 text-xs text-slate-200">
+              <div className="flex items-center gap-2 font-bold text-[#FFE79C] text-sm">
+                <BookOpen className="h-4 w-4 shrink-0 text-terracotta-400" />
                 <span>Quick Studio Guide:</span>
               </div>
-              <ol className="flex flex-col space-y-1.5 list-decimal list-inside text-slate-200 pl-1">
-                <li>
-                  <strong>Select or add a gesture class</strong> in Step 1 (or
-                  click <em>Demo Data</em> in the top bar to load 32 ready-made
-                  samples).
-                </li>
-                <li>
-                  <strong>Capture photos</strong> by holding your hand in front
-                  of the camera and pressing{" "}
-                  <kbd className="rounded border border-slate-700 bg-slate-800 px-1.5 py-0.5 font-mono text-[10px]">
-                    Space
-                  </kbd>{" "}
-                  or <strong>Auto-Burst</strong>.
-                </li>
-                <li>
-                  <strong>Train your classifier</strong> in Step 2 to recognize
-                  your hand gestures live on the webcam feed.
-                </li>
-                <li>
-                  <strong>Download your dataset or model</strong> as a{" "}
-                  <strong>.zip</strong>, <strong>.csv</strong>, or{" "}
-                  <strong>TF.js bundle</strong> (all work is saved privately in
-                  your browser&apos;s local storage).
-                </li>
-              </ol>
+              <div className="flex flex-col space-y-2 text-slate-200">
+                <div className="flex items-start gap-2.5">
+                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-ocean-600 text-[10px] font-bold text-white shadow-sm mt-0.5">
+                    1
+                  </span>
+                  <div className="leading-relaxed">
+                    <strong>Select or add a gesture class</strong> in Step 1 (or click{" "}
+                    <em>Demo Data</em> in the top bar to load 32 ready-made samples).
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-2.5">
+                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-ocean-600 text-[10px] font-bold text-white shadow-sm mt-0.5">
+                    2
+                  </span>
+                  <div className="leading-relaxed">
+                    <strong>Capture photos</strong> by holding your hand in front of the camera and pressing{" "}
+                    <kbd className="rounded border border-ocean-600/60 bg-[#0a1725] px-1.5 py-0.5 font-mono text-[10px] text-slate-200">
+                      Space
+                    </kbd>{" "}
+                    or using <strong>Auto-Burst</strong>.
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-2.5">
+                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-ocean-600 text-[10px] font-bold text-white shadow-sm mt-0.5">
+                    3
+                  </span>
+                  <div className="leading-relaxed">
+                    <strong>Train your classifier</strong> in Step 2 to recognize your hand gestures live on the webcam feed.
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-2.5">
+                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-ocean-600 text-[10px] font-bold text-white shadow-sm mt-0.5">
+                    4
+                  </span>
+                  <div className="leading-relaxed">
+                    <strong>Download your dataset or model</strong> as a{" "}
+                    <strong>.zip</strong>, <strong>.csv</strong>, or{" "}
+                    <strong>TF.js bundle</strong> (all data is preserved privately in your browser&apos;s local storage).
+                  </div>
+                </div>
+              </div>
             </div>
             <button
               onClick={handleToggleQuickGuide}
               title="Dismiss Quick Studio Guide"
-              className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-800 hover:text-white"
+              className="rounded-lg p-1.5 text-slate-400 hover:bg-[#1a3857] hover:text-white transition"
             >
               <X className="h-4 w-4" />
             </button>
@@ -426,7 +445,7 @@ export default function HandPoseStudioPage() {
       )}
 
       {/* Main Studio Grid */}
-      <main className="mx-auto grid w-full max-w-[1600px] flex-1 grid-cols-1 gap-6 p-4 sm:p-6 lg:grid-cols-12">
+      <main className="mx-auto grid w-full max-w-[1600px] flex-1 grid-cols-1 gap-5 p-3.5 sm:p-6 lg:grid-cols-12">
         {/* Left Column: Live Camera + MediaPipe 3D Stage (5 cols on lg) */}
         <div className="flex flex-col gap-4 lg:col-span-5">
           <CameraStage
@@ -440,9 +459,9 @@ export default function HandPoseStudioPage() {
 
           {/* Helpful Starter Callout when 0 samples exist */}
           {samples.length === 0 && (
-            <div className="flex items-center justify-between gap-3 rounded-2xl border border-violet-500/30 bg-violet-500/10 p-3.5 text-xs">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 rounded-2xl border border-ocean-600/50 bg-[#122840]/75 p-3.5 text-xs shadow-md">
               <div className="flex items-center gap-2.5">
-                <Sparkles className="h-4 w-4 text-violet-300 shrink-0" />
+                <Sparkles className="h-4 w-4 text-gold-300 shrink-0" />
                 <span className="text-slate-200">
                   No webcam handy? Load 32 synthetic 3D hand poses to try
                   training right away.
@@ -450,7 +469,7 @@ export default function HandPoseStudioPage() {
               </div>
               <button
                 onClick={handleLoadDemoDataset}
-                className="shrink-0 rounded-lg bg-violet-500 px-3 py-1.5 font-bold text-slate-950 transition hover:bg-violet-400"
+                className="shrink-0 w-full sm:w-auto rounded-lg bg-gradient-to-r from-terracotta-500 to-terracotta-600 px-3.5 py-1.5 font-bold text-white shadow-sm shadow-terracotta-950/40 transition hover:from-terracotta-400 hover:to-terracotta-500"
               >
                 Load Demo Data
               </button>
@@ -461,31 +480,31 @@ export default function HandPoseStudioPage() {
         {/* Right Column: Guided Step Tabs (7 cols on lg) */}
         <div className="flex flex-col gap-4 lg:col-span-7">
           {/* Step Switcher Bar */}
-          <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-slate-800 bg-slate-900/90 p-2">
+          <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-ocean-700/60 bg-[#0e1d2e]/90 p-2 shadow-lg">
             <div className="flex flex-1 items-center gap-1.5">
               <button
                 onClick={() => setActiveStepTab("collect")}
-                className={`flex flex-1 items-center justify-center gap-2 rounded-xl px-3.5 py-2 text-xs font-bold transition ${
+                className={`flex flex-1 items-center justify-center gap-1.5 sm:gap-2 rounded-xl px-2.5 sm:px-3.5 py-2 text-[11px] sm:text-xs font-bold transition ${
                   activeStepTab === "collect"
-                    ? "bg-cyan-500 text-slate-950 shadow-sm"
-                    : "text-slate-300 hover:bg-slate-800"
+                    ? "bg-gradient-to-r from-terracotta-500 to-terracotta-600 text-white shadow-md shadow-terracotta-950/30"
+                    : "text-slate-300 hover:bg-[#16304d]"
                 }`}
               >
-                <FolderPlus className="h-4 w-4" />
-                <span>Step 1: Collect Poses ({samples.length})</span>
+                <FolderPlus className="h-4 w-4 shrink-0" />
+                <span className="truncate">Step 1: Collect ({samples.length})</span>
               </button>
 
               <button
                 onClick={() => setActiveStepTab("train")}
-                className={`flex flex-1 items-center justify-center gap-2 rounded-xl px-3.5 py-2 text-xs font-bold transition ${
+                className={`flex flex-1 items-center justify-center gap-1.5 sm:gap-2 rounded-xl px-2.5 sm:px-3.5 py-2 text-[11px] sm:text-xs font-bold transition ${
                   activeStepTab === "train"
-                    ? "bg-violet-500 text-white shadow-sm"
-                    : "text-slate-300 hover:bg-slate-800"
+                    ? "bg-ocean-600 text-white shadow-md shadow-ocean-950/30"
+                    : "text-slate-300 hover:bg-[#16304d]"
                 }`}
               >
-                <BrainCircuit className="h-4 w-4" />
-                <span>
-                  Step 2: Train &amp; Test Live
+                <BrainCircuit className="h-4 w-4 shrink-0" />
+                <span className="truncate">
+                  Step 2: Train &amp; Test
                   {trainedModelRecord
                     ? ` (${trainedModelRecord.finalAccuracy}%)`
                     : ""}
@@ -502,8 +521,8 @@ export default function HandPoseStudioPage() {
               title="Show both steps stacked together"
               className={`flex items-center gap-1 rounded-xl border px-3 py-2 text-xs font-medium transition ${
                 activeStepTab === "all"
-                  ? "border-cyan-500/40 bg-cyan-500/15 text-cyan-300"
-                  : "border-slate-800 bg-slate-950 text-slate-400 hover:text-white"
+                  ? "border-gold-300/40 bg-gold-200/15 text-gold-200"
+                  : "border-ocean-700/60 bg-[#091522] text-slate-300 hover:text-white"
               }`}
             >
               <Layers className="h-3.5 w-3.5" />
@@ -530,7 +549,7 @@ export default function HandPoseStudioPage() {
 
               {/* Next Step Callout Banner when user has collected >=2 classes in Tabbed mode */}
               {activeStepTab === "collect" && readyClassCount >= 2 && (
-                <div className="flex items-center justify-between gap-3 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-3.5 text-xs">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 rounded-2xl border border-emerald-500/40 bg-emerald-950/30 p-3.5 text-xs shadow-md">
                   <span className="text-emerald-200">
                     Awesome! You have samples for{" "}
                     <strong>{readyClassCount} classes</strong> ({samples.length}{" "}
@@ -538,7 +557,7 @@ export default function HandPoseStudioPage() {
                   </span>
                   <button
                     onClick={() => setActiveStepTab("train")}
-                    className="flex shrink-0 items-center gap-1.5 rounded-xl bg-emerald-500 px-4 py-2 font-bold text-slate-950 transition hover:bg-emerald-400"
+                    className="flex shrink-0 w-full sm:w-auto items-center justify-center gap-1.5 rounded-xl bg-emerald-500 px-4 py-2 font-bold text-slate-950 transition hover:bg-emerald-400 shadow-md shadow-emerald-950/40"
                   >
                     <span>Go to Step 2: Train Model</span>
                     <ArrowRight className="h-4 w-4" />
