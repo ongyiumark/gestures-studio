@@ -9,6 +9,27 @@ export const metadata: Metadata = {
     icon: "/icon.png",
     apple: "/apple-icon.png",
   },
+  openGraph: {
+    title: "Gesture Studio — 3D Hand Pose Dataset Builder & In-Browser ML",
+    description:
+      "Interactive 3D hand pose dataset builder and in-browser machine learning classifier powered by Google MediaPipe and TensorFlow.js. 100% private in-browser local storage.",
+    type: "website",
+    images: [
+      {
+        url: "/opengraph-image.png",
+        width: 1200,
+        height: 630,
+        alt: "Gesture Studio — 3D Hand Pose Dataset Builder & ML Classifier",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Gesture Studio — 3D Hand Pose Dataset Builder & In-Browser ML",
+    description:
+      "Interactive 3D hand pose dataset builder and in-browser machine learning classifier powered by Google MediaPipe and TensorFlow.js.",
+    images: ["/opengraph-image.png"],
+  },
 };
 
 export default function RootLayout({
