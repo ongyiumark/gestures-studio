@@ -11,6 +11,7 @@ import {
   Plus,
   Trash2,
   X,
+  ZoomIn,
 } from "lucide-react";
 import { CapturedSample, PoseClassMeta } from "@/types/handpose";
 import { drawHandsOnCanvas } from "@/lib/landmarks";
@@ -19,6 +20,7 @@ interface SampleCardProps {
   sample: CapturedSample;
   accentColor: string;
   showOverlay: boolean;
+  onPreview: (sample: CapturedSample) => void;
   onDelete: (id: string) => void;
 }
 
@@ -26,6 +28,7 @@ function SampleCard({
   sample,
   accentColor,
   showOverlay,
+  onPreview,
   onDelete,
 }: SampleCardProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -48,9 +51,14 @@ function SampleCard({
   }, [sample.hands, accentColor, showOverlay]);
 
   const primaryHand = sample.hands?.[0];
+  const handCount = sample.hands?.length || 0;
 
   return (
-    <div className="group relative aspect-[4/3] overflow-hidden rounded-xl border border-ocean-800/60 bg-[#08121d] shadow-sm transition hover:border-ocean-500">
+    <div
+      onClick={() => onPreview(sample)}
+      className="group relative aspect-[4/3] overflow-hidden rounded-xl border border-ocean-800/60 bg-[#08121d] shadow-sm transition hover:border-ocean-400 hover:scale-[1.02] cursor-pointer"
+      title="Click to blow up & preview sample"
+    >
       {sample.imageDataUrl ? (
         <Image
           src={sample.imageDataUrl}
@@ -73,6 +81,13 @@ function SampleCard({
         className="pointer-events-none absolute inset-0 h-full w-full object-cover"
       />
 
+      {/* Hover Zoom Hint */}
+      <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/25 opacity-0 transition group-hover:opacity-100">
+        <div className="rounded-full bg-[#0d2238]/90 p-2 text-sky-200 shadow-lg border border-ocean-500/50">
+          <ZoomIn className="h-4 w-4" />
+        </div>
+      </div>
+
       {/* Handedness & Confidence Badge */}
       {primaryHand && (
         <div className="pointer-events-none absolute bottom-1.5 left-1.5 flex items-center gap-1 rounded bg-[#071320]/90 px-1.5 py-0.5 text-[10px] font-medium text-slate-200 backdrop-blur-sm">
@@ -81,20 +96,168 @@ function SampleCard({
             style={{ backgroundColor: accentColor }}
           />
           <span>
-            {primaryHand.handedness[0]} &bull;{" "}
-            {(primaryHand.score * 100).toFixed(0)}%
+            {handCount > 1
+              ? `2H • ${sample.hands.map((h) => h.handedness[0]).join("+")}`
+              : `${primaryHand.handedness[0]} • ${(primaryHand.score * 100).toFixed(0)}%`}
           </span>
         </div>
       )}
 
-      {/* Delete Sample Button (Terracotta heritage #9e3201) */}
+      {/* Delete Sample Button */}
       <button
-        onClick={() => onDelete(sample.id)}
+        onClick={(e) => {
+          e.stopPropagation();
+          onDelete(sample.id);
+        }}
         title="Delete sample"
-        className="absolute top-1.5 right-1.5 flex h-6 w-6 items-center justify-center rounded-md bg-terracotta-700/90 text-white opacity-0 shadow transition group-hover:opacity-100 hover:bg-terracotta-600"
+        className="absolute top-1.5 right-1.5 z-10 flex h-6 w-6 items-center justify-center rounded-md bg-terracotta-700/90 text-white opacity-0 shadow transition group-hover:opacity-100 hover:bg-terracotta-600 active:scale-95"
       >
         <X className="h-3.5 w-3.5" />
       </button>
+    </div>
+  );
+}
+
+interface SamplePreviewModalProps {
+  sample: CapturedSample;
+  accentColor: string;
+  onClose: () => void;
+  onDelete: (id: string) => void;
+}
+
+function SamplePreviewModal({
+  sample,
+  accentColor,
+  onClose,
+  onDelete,
+}: SamplePreviewModalProps) {
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    if (sample.hands && sample.hands.length > 0) {
+      drawHandsOnCanvas(sample.hands, ctx, canvas.width, canvas.height, {
+        compact: false,
+        showLabels: true,
+        accentColor,
+      });
+    } else {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
+  }, [sample.hands, accentColor]);
+
+  const dateStr = new Date(sample.timestamp).toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  });
+
+  return (
+    <div
+      onClick={onClose}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 p-3 sm:p-6 backdrop-blur-sm"
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="relative flex flex-col w-full max-w-2xl overflow-hidden rounded-2xl border border-ocean-600/70 bg-[#0d1c2d] shadow-2xl animate-in zoom-in-95 duration-150"
+      >
+        {/* Modal Header */}
+        <div className="flex items-center justify-between border-b border-ocean-700/60 bg-[#12263a] px-4 py-3">
+          <div className="flex items-center gap-2.5">
+            <span
+              className="h-3.5 w-3.5 rounded-full shadow-sm"
+              style={{ backgroundColor: accentColor }}
+            />
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm font-bold text-white">{sample.className}</h3>
+                <span className="rounded bg-ocean-700/60 px-2 py-0.5 text-[10px] font-mono text-sky-200">
+                  {sample.hands.length === 1 ? "1 Hand" : `${sample.hands.length} Hands`}
+                </span>
+              </div>
+              <p className="text-[11px] text-sky-200/70">Captured at {dateStr}</p>
+            </div>
+          </div>
+
+          <button
+            onClick={onClose}
+            className="rounded-lg p-1.5 text-slate-400 hover:bg-[#1a344e] hover:text-white transition"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        {/* Enlarged Image & Canvas Viewport */}
+        <div className="relative aspect-[4/3] w-full bg-[#07111b] flex items-center justify-center overflow-hidden">
+          {sample.imageDataUrl ? (
+            <Image
+              src={sample.imageDataUrl}
+              alt={sample.className}
+              fill
+              unoptimized
+              className="object-contain"
+            />
+          ) : (
+            <div className="text-xs text-slate-400">No Image Preview Available</div>
+          )}
+
+          <canvas
+            ref={canvasRef}
+            width={sample.width || 640}
+            height={sample.height || 480}
+            className="pointer-events-none absolute inset-0 h-full w-full object-contain"
+          />
+        </div>
+
+        {/* Modal Footer */}
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-ocean-700/60 bg-[#102235] px-4 py-3">
+          <div className="flex items-center gap-2 text-xs text-slate-300">
+            {sample.hands.map((h, i) => (
+              <span
+                key={i}
+                className="rounded-lg border border-ocean-700/60 bg-[#0a1624] px-2.5 py-1 text-[11px] font-medium"
+              >
+                {h.handedness}: <strong className="text-emerald-400">{(h.score * 100).toFixed(0)}%</strong>
+              </span>
+            ))}
+            <span className="text-ocean-400 hidden sm:inline">&bull;</span>
+            <span className="text-[11px] text-slate-400 hidden sm:inline">
+              Resolution: {sample.width}&times;{sample.height}
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => {
+                onDelete(sample.id);
+                onClose();
+              }}
+              className="flex items-center gap-1.5 rounded-lg border border-rose-500/30 bg-rose-500/15 px-3 py-1.5 text-xs font-semibold text-rose-300 hover:bg-rose-500/25 transition active:scale-95"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              <span>Delete Sample</span>
+            </button>
+            <button
+              onClick={onClose}
+              className="rounded-lg bg-ocean-700 px-3.5 py-1.5 text-xs font-semibold text-white hover:bg-ocean-600 transition active:scale-95"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
@@ -136,6 +299,7 @@ export default function ClassManager({
   const [editValue, setEditValue] = useState("");
   const [showOverlayOnThumbs, setShowOverlayOnThumbs] = useState(true);
   const [galleryFilter, setGalleryFilter] = useState<"active" | "all">("active");
+  const [previewSample, setPreviewSample] = useState<CapturedSample | null>(null);
 
   const handleCreate = (e: React.FormEvent) => {
     e.preventDefault();
@@ -400,12 +564,23 @@ export default function ClassManager({
                   sample={sample}
                   accentColor={colorMap.get(sample.className) || "#38bdf8"}
                   showOverlay={showOverlayOnThumbs}
+                  onPreview={setPreviewSample}
                   onDelete={onDeleteSample}
                 />
               ))}
           </div>
         )}
       </div>
+
+      {/* Enlarged Sample Preview Modal */}
+      {previewSample && (
+        <SamplePreviewModal
+          sample={previewSample}
+          accentColor={colorMap.get(previewSample.className) || "#38bdf8"}
+          onClose={() => setPreviewSample(null)}
+          onDelete={onDeleteSample}
+        />
+      )}
     </div>
   );
 }

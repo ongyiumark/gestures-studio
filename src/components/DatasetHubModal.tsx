@@ -282,7 +282,7 @@ export default function DatasetHubModal({
                     <span>Export Landmarks Table (.csv)</span>
                   </div>
                   <p className="text-[11px] text-slate-300">
-                    Flat tabular CSV with raw &amp; normalized 63-D coordinates
+                    Flat tabular CSV with raw &amp; normalized 1-hand &amp; 2-hand coordinates
                     for Python / scikit-learn / PyTorch.
                   </p>
                 </button>

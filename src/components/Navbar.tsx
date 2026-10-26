@@ -7,7 +7,6 @@ import {
   BookOpen,
   Download,
   FolderArchive,
-  Hand,
   HardDrive,
   HelpCircle,
   Loader2,

@@ -11,7 +11,8 @@ import {
 import {
   augmentFeatureVector,
   extractFeatureVector,
-   getClassColor,
+  FEATURE_VECTOR_SIZE,
+  getClassColor,
 } from "@/lib/landmarks";
 
 export interface PreparedDataset {
@@ -130,13 +131,14 @@ export async function trainMLPClassifier(
   );
 
   const numClasses = classes.length;
-  const xs = tf.tensor2d(shuffledFeatures, [shuffledFeatures.length, 63]);
+  const inputDim = prepared.features[0]?.length || FEATURE_VECTOR_SIZE;
+  const xs = tf.tensor2d(shuffledFeatures, [shuffledFeatures.length, inputDim]);
   const ys = tf.oneHot(tf.tensor1d(shuffledLabels, "int32"), numClasses);
 
   const model = tf.sequential();
   model.add(
     tf.layers.dense({
-      inputShape: [63],
+      inputShape: [inputDim],
       units: config.hiddenUnits,
       activation: "relu",
       kernelInitializer: "heNormal",
@@ -285,8 +287,17 @@ export function predictWithMLP(
   const vec = extractFeatureVector(hands);
   if (!vec || classes.length === 0) return null;
 
+  // Adaptively support both 131-D models and legacy 63-D models
+  const expectedDim = (model.inputs[0]?.shape?.[1] as number) || FEATURE_VECTOR_SIZE;
+  let inputVec = vec;
+  if (inputVec.length < expectedDim) {
+    inputVec = [...inputVec, ...new Array(expectedDim - inputVec.length).fill(0)];
+  } else if (inputVec.length > expectedDim) {
+    inputVec = inputVec.slice(0, expectedDim);
+  }
+
   const probs = tf.tidy(() => {
-    const input = tf.tensor2d([vec], [1, 63]);
+    const input = tf.tensor2d([inputVec], [1, expectedDim]);
     const output = model.predict(input) as tf.Tensor;
     return Array.from(output.dataSync());
   });
