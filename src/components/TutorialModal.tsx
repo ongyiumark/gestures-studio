@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   ArrowLeft,
   ArrowRight,
@@ -85,6 +85,20 @@ export default function TutorialModal({
 }: TutorialModalProps) {
   const [currentIdx, setCurrentIdx] = useState(0);
 
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
   const step = TUTORIAL_STEPS[currentIdx];
@@ -92,13 +106,22 @@ export default function TutorialModal({
   const isLast = currentIdx === TUTORIAL_STEPS.length - 1;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-3 sm:p-4 backdrop-blur-sm">
-      <div className="relative flex w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-ocean-700/60 bg-[#0e1d2f] shadow-2xl max-h-[90vh] overflow-y-auto">
+    <div
+      role="dialog"
+      aria-modal="true"
+      onClick={onClose}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-3 sm:p-4 backdrop-blur-sm"
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="relative flex w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-ocean-700/60 bg-[#0e1d2f] shadow-2xl max-h-[90vh] overflow-y-auto"
+      >
         {/* Top Progress Bar */}
         <div className="grid grid-cols-4 gap-1 bg-[#08121d] p-1.5">
           {TUTORIAL_STEPS.map((s, idx) => (
             <button
               key={s.stepNumber}
+              aria-label={`Go to step ${s.stepNumber}: ${s.title}`}
               onClick={() => setCurrentIdx(idx)}
               className={`h-1.5 rounded-full transition-all ${
                 idx <= currentIdx ? "bg-terracotta-500" : "bg-[#14263a]"

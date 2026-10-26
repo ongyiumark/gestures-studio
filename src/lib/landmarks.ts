@@ -77,6 +77,7 @@ export interface DrawHandOptions {
   compact?: boolean;
   showLabels?: boolean;
   accentColor?: string;
+  mirrored?: boolean;
 }
 
 /**
@@ -93,7 +94,7 @@ export function drawHandsOnCanvas(
   ctx.clearRect(0, 0, width, height);
   if (!hands || hands.length === 0) return;
 
-  const { compact = false, showLabels = true, accentColor } = options;
+  const { compact = false, showLabels = true, accentColor, mirrored = false } = options;
 
   hands.forEach((hand, handIdx) => {
     const pts = hand.landmarks;
@@ -101,6 +102,8 @@ export function drawHandsOnCanvas(
 
     const primaryColor = accentColor || "#38bdf8";
     const jointColor = "#f59e0b";
+
+    const getX = (normX: number) => (mirrored ? (1-normX) * width : normX * width)
 
     // Draw skeleton connections
     ctx.save();
@@ -112,9 +115,9 @@ export function drawHandsOnCanvas(
       const p1 = pts[endIdx];
       if (!p0 || !p1) continue;
 
-      const x0 = p0.x * width;
+      const x0 = getX(p0.x);
       const y0 = p0.y * height;
-      const x1 = p1.x * width;
+      const x1 = getX(p1.x);
       const y1 = p1.y * height;
 
       ctx.beginPath();
@@ -131,7 +134,7 @@ export function drawHandsOnCanvas(
 
     // Draw 21 landmark joints
     pts.forEach((pt, idx) => {
-      const x = pt.x * width;
+      const x = getX(pt.x);
       const y = pt.y * height;
       const isTip = [4, 8, 12, 16, 20].includes(idx);
       const isWrist = idx === 0;
@@ -161,7 +164,7 @@ export function drawHandsOnCanvas(
     // Optional handedness + score badge near wrist
     if (showLabels && !compact) {
       const wrist = pts[0];
-      const wx = Math.min(Math.max(wrist.x * width, 40), width - 100);
+      const wx = Math.min(Math.max(getX(wrist.x), 40), width - 100);
       const wy = Math.min(Math.max(wrist.y * height + 22, 24), height - 12);
       const label = `${hand.handedness} ${(hand.score * 100).toFixed(0)}%`;
 

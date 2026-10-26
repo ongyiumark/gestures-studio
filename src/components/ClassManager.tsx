@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import {
   Check,
@@ -24,7 +24,7 @@ interface SampleCardProps {
   onDelete: (id: string) => void;
 }
 
-function SampleCard({
+const SampleCard = React.memo(function SampleCard({
   sample,
   accentColor,
   showOverlay,
@@ -110,13 +110,14 @@ function SampleCard({
           onDelete(sample.id);
         }}
         title="Delete sample"
-        className="absolute top-1.5 right-1.5 z-10 flex h-6 w-6 items-center justify-center rounded-md bg-terracotta-700/90 text-white opacity-0 shadow transition group-hover:opacity-100 hover:bg-terracotta-600 active:scale-95"
+        aria-label="Delete sample"
+        className="absolute top-1.5 right-1.5 z-10 flex h-6 w-6 items-center justify-center rounded-md bg-terracotta-700/90 text-white opacity-100 sm:opacity-0 sm:group-hover:opacity-100 focus:opacity-100 focus:outline-none focus:ring-2 focus:ring-white shadow transition hover:bg-terracotta-600 active:scale-95"
       >
         <X className="h-3.5 w-3.5" />
       </button>
     </div>
   );
-}
+});
 
 interface SamplePreviewModalProps {
   sample: CapturedSample;
@@ -137,8 +138,13 @@ function SamplePreviewModal({
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
     };
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
     window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      window.removeEventListener("keydown", handleKeyDown);
+    };
   }, [onClose]);
 
   useEffect(() => {
@@ -166,6 +172,8 @@ function SamplePreviewModal({
 
   return (
     <div
+      role="dialog"
+      aria-modal="true"
       onClick={onClose}
       className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 p-3 sm:p-6 backdrop-blur-sm"
     >
@@ -283,7 +291,7 @@ const PRESET_CLASSES = [
   "Pointing",
 ];
 
-export default function ClassManager({
+function ClassManager({
   classes,
   samples,
   activeClassName,
@@ -322,20 +330,33 @@ export default function ClassManager({
     setEditingClass(null);
   };
 
-  const countsByClass = new Map<string, number>();
-  for (const s of samples) {
-    countsByClass.set(s.className, (countsByClass.get(s.className) || 0) + 1);
-  }
+  const countsByClass = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const s of samples) {
+      counts.set(s.className, (counts.get(s.className) || 0) + 1);
+    }
+    return counts;
+  }, [samples]);
 
-  const displayedSamples =
-    galleryFilter === "all" || !activeClassName
-      ? samples
-      : samples.filter((s) => s.className === activeClassName);
+  const displayedSamples = useMemo(() => {
+    const list =
+      galleryFilter === "all" || !activeClassName
+        ? samples
+        : samples.filter((s) => s.className === activeClassName);
+    return list.slice().reverse();
+  }, [samples, galleryFilter, activeClassName]);
 
-  const colorMap = new Map(classes.map((c) => [c.name, c.color]));
-  const existingNames = new Set(classes.map((c) => c.name.toLowerCase()));
-  const availablePresets = PRESET_CLASSES.filter(
-    (p) => !existingNames.has(p.toLowerCase())
+  const colorMap = useMemo(
+    () => new Map(classes.map((c) => [c.name, c.color])),
+    [classes]
+  );
+  const existingNames = useMemo(
+    () => new Set(classes.map((c) => c.name.toLowerCase())),
+    [classes]
+  );
+  const availablePresets = useMemo(
+    () => PRESET_CLASSES.filter((p) => !existingNames.has(p.toLowerCase())),
+    [existingNames]
   );
 
   return (
@@ -555,10 +576,7 @@ export default function ClassManager({
           </div>
         ) : (
           <div className="grid max-h-[300px] grid-cols-2 min-[420px]:grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2.5 overflow-y-auto pr-1">
-            {displayedSamples
-              .slice()
-              .reverse()
-              .map((sample) => (
+            {displayedSamples.map((sample) => (
                 <SampleCard
                   key={sample.id}
                   sample={sample}
@@ -584,3 +602,5 @@ export default function ClassManager({
     </div>
   );
 }
+
+export default React.memo(ClassManager);

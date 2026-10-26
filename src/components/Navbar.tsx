@@ -20,7 +20,7 @@ interface NavbarProps {
   totalClasses: number;
   hasTrainedModel: boolean;
   trainedAccuracy?: number;
-  syncStatus: "saved" | "saving" | "idle";
+  syncStatus: "saved" | "saving" | "idle" | "error";
   onOpenHub: () => void;
   onQuickDownloadZip: () => void;
   onLoadDemoData: () => void;
@@ -28,7 +28,7 @@ interface NavbarProps {
   onToggleHelp: () => void;
 }
 
-export default function Navbar({
+function Navbar({
   modelReady,
   fps,
   totalSamples,
@@ -129,13 +129,27 @@ export default function Navbar({
           </div>
 
           <div
-            title="All data is saved strictly in your browser's local storage — never uploaded to a server."
-            className="flex items-center gap-1.5 rounded-lg border border-ocean-700/50 bg-[#0e2135]/60 px-2.5 py-1.5 text-[11px] text-sky-200/80"
+            title={
+              syncStatus === "error"
+                ? "Storage quota exceeded or browser storage blocked."
+                : "All data is saved strictly in your browser's local storage — never uploaded to a server."
+            }
+            className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[11px] ${
+              syncStatus === "error"
+                ? "border-rose-500/50 bg-rose-950/60 text-rose-300"
+                : "border-ocean-700/50 bg-[#0e2135]/60 text-sky-200/80"
+            }`}
           >
-            <HardDrive className="h-3.5 w-3.5 text-emerald-400" />
-            <span>
+            <HardDrive
+              className={`h-3.5 w-3.5 ${
+                syncStatus === "error" ? "text-rose-400" : "text-emerald-400"
+              }`}
+            />
+            <span className={syncStatus === "error" ? "text-rose-300 font-medium" : ""}>
               {syncStatus === "saving"
                 ? "Saving to browser…"
+                : syncStatus === "error"
+                ? "Storage Error"
                 : "Saved locally"}
             </span>
           </div>
@@ -204,3 +218,5 @@ export default function Navbar({
     </header>
   );
 }
+
+export default React.memo(Navbar);

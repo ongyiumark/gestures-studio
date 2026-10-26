@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import * as tf from "@tensorflow/tfjs";
 import Navbar from "@/components/Navbar";
 import CameraStage from "@/components/CameraStage";
@@ -17,7 +17,7 @@ import {
   TrainingConfig,
   TrainingHistoryPoint,
 } from "@/types/handpose";
-import { getClassColor } from "@/lib/landmarks";
+import { extractFeatureVector, getClassColor } from "@/lib/landmarks";
 import {
   deserializeTFModel,
   ensureTFBackend,
@@ -67,9 +67,9 @@ export default function HandPoseStudioPage() {
   const [fps, setFps] = useState(0);
   const lastFpsUpdateRef = useRef<number>(0);
   const lastPredictionTimeRef = useRef<number>(0);
-  const [syncStatus, setSyncStatus] = useState<"saved" | "saving" | "idle">(
-    "saved"
-  );
+  const [syncStatus, setSyncStatus] = useState<
+    "saved" | "saving" | "idle" | "error"
+  >("saved");
 
   // Classifier & Training State
   const [trainingConfig, setTrainingConfig] = useState<TrainingConfig>({
@@ -142,16 +142,62 @@ export default function HandPoseStudioPage() {
     };
   }, []);
 
-  // Auto-save workspace strictly to browser local storage whenever classes, samples, or model change
+  // Keep a reference to latest workspace state for debounced & max-wait flushes
+  const latestStateRef = useRef({ classes, samples, trainedModelRecord });
+  latestStateRef.current = { classes, samples, trainedModelRecord };
+  const maxWaitTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Auto-save workspace with debounce (350ms) and max-wait (1200ms) to prevent starvation during bursts
   useEffect(() => {
     if (!hydrated) return;
     setSyncStatus("saving");
-    const timer = setTimeout(async () => {
-      await saveWorkspaceLocally(classes, samples, trainedModelRecord);
-      setSyncStatus("saved");
-    }, 350);
-    return () => clearTimeout(timer);
+
+    const flushSave = async () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+        debounceTimerRef.current = null;
+      }
+      if (maxWaitTimerRef.current) {
+        clearTimeout(maxWaitTimerRef.current);
+        maxWaitTimerRef.current = null;
+      }
+      const { classes: c, samples: s, trainedModelRecord: m } = latestStateRef.current;
+      try {
+        await saveWorkspaceLocally(c, s, m);
+        setSyncStatus("saved");
+      } catch (err) {
+        console.error("Auto-save failed:", err);
+        setSyncStatus("error");
+      }
+    };
+
+    // Schedule max-wait timer if not already active
+    if (!maxWaitTimerRef.current) {
+      maxWaitTimerRef.current = setTimeout(flushSave, 1200);
+    }
+
+    // Reset trailing debounce timer
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+    debounceTimerRef.current = setTimeout(flushSave, 350);
+
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+        debounceTimerRef.current = null;
+      }
+    };
   }, [classes, samples, trainedModelRecord, hydrated]);
+
+  // Clean up any lingering timers on unmount
+  useEffect(() => {
+    return () => {
+      if (maxWaitTimerRef.current) clearTimeout(maxWaitTimerRef.current);
+      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+    };
+  }, []);
 
   const activeClass =
     classes.find((c) => c.name === activeClassName) || classes[0] || null;
@@ -177,20 +223,67 @@ export default function HandPoseStudioPage() {
   };
 
   const handleRenameClass = (oldName: string, newName: string) => {
+    const trimmed = newName.trim();
+    if (!trimmed || trimmed === oldName) return;
+
+    // Check if the new name collides with another existing class
+    const exists = classes.some(
+      (c) => 
+        c.name.toLowerCase() === trimmed.toLowerCase() &&
+        c.name.toLowerCase() !== oldName.toLowerCase()
+    );
+    if (exists) {
+      alert(`A class named "${trimmed}" already exists.`);
+      return;
+    }
+
     setClasses((prev) =>
-      prev.map((c) => (c.name === oldName ? { ...c, name: newName } : c))
+      prev.map((c) => (c.name === oldName ? { ...c, name: trimmed } : c))
     );
     setSamples((prev) =>
       prev.map((s) =>
-        s.className === oldName ? { ...s, className: newName } : s
+        s.className === oldName ? { ...s, className: trimmed } : s
       )
     );
     if (activeClassName === oldName) {
-      setActiveClassName(newName);
+      setActiveClassName(trimmed);
+    }
+
+    // Keep active model class labels in sync if model was trained on old name
+    if (trainedModelRecord && trainedModelRecord.classes.includes(oldName)) {
+      setTrainedModelRecord((prev) => 
+        prev 
+          ? {
+            ...prev,
+            classes: prev.classes.map((cls) =>
+              cls === oldName ? trimmed : cls
+            )
+          }
+          : null
+      )
+    }
+  };
+
+  const clearActiveModel = () => {
+    setTrainedModelRecord(null);
+    setTrainingProgress([]);
+    setLivePrediction(null);
+    if (tfModelRef.current) {
+      tfModelRef.current.dispose();
+      tfModelRef.current = null;
     }
   };
 
   const handleDeleteClass = (name: string) => {
+    const sampleCount = samples.filter((s) => s.className === name).length;
+    const confirmMessage =
+      sampleCount > 0
+        ? `Delete class "${name}" and its ${sampleCount} captured ${sampleCount === 1 ? "sample" : "samples"}? This cannot be undone.`
+        : `Delete class "${name}"?`;
+    if (typeof window !== "undefined" && !window.confirm(confirmMessage)) {
+      return;
+    }
+
     setClasses((prev) => {
       const next = prev.filter((c) => c.name !== name);
       if (activeClassName === name) {
@@ -199,6 +292,10 @@ export default function HandPoseStudioPage() {
       return next;
     });
     setSamples((prev) => prev.filter((s) => s.className !== name));
+    // If the active model was trained on this deleted class, invalidate it
+    if (trainedModelRecord?.classes.includes(name)) {
+      clearActiveModel();
+    }
   };
 
   const handleCaptureSample = useCallback((sample: CapturedSample) => {
@@ -210,22 +307,36 @@ export default function HandPoseStudioPage() {
   };
 
   const handleClearWorkspace = () => {
-    setSamples([]);
-    setTrainedModelRecord(null);
-    setTrainingProgress([]);
-    setLivePrediction(null);
-    if (tfModelRef.current) {
-      tfModelRef.current.dispose();
-      tfModelRef.current = null;
+    if (samples.length > 0 || trainedModelRecord) {
+      const message = `Are you sure you want to reset the workspace? All ${samples.length} captured ${samples.length === 1 ? "sample" : "samples"} and the active model will be cleared. This cannot be undone.`;
+      if (typeof window !== "undefined" && !window.confirm(message)) {
+        return;
+      }
     }
+    setSamples([]);
+    clearActiveModel();
   };
 
   const handleLoadDemoDataset = () => {
+    clearActiveModel();
     const demo = generateDemoDataset(8);
     setClasses(demo.classes);
     setSamples(demo.samples);
     setActiveClassName(demo.classes[0].name);
   };
+
+  // Memoize extracted feature vectors for all samples in the workspace
+  // so k-NN does not re-extract features on every video frame
+  const workspaceExemplars = useMemo(() => {
+    return samples
+      .map((s) => ({
+        className: s.className,
+        vec: extractFeatureVector(s.hands),
+      }))
+      .filter(
+        (s): s is { className: string; vec: number[] } => s.vec !== null
+      );
+  }, [samples]);
 
   // Real-time hand detection callback + live hand pose classification (throttled to avoid React re-render cascades)
   const handleHandsDetected = useCallback(
@@ -258,16 +369,28 @@ export default function HandPoseStudioPage() {
         );
         setLivePrediction(pred);
       } else if (
-        trainedModelRecord?.classifierType === "knn" ||
-        (trainingConfig.classifierType === "knn" && samples.length >= 4)
+        trainedModelRecord?.classifierType === "knn" &&
+        trainedModelRecord.knnExemplars &&
+        trainedModelRecord.knnExemplars.length >= 4
       ) {
-        const pred = predictWithKNN(samples, detectedHands, classes, 5);
+        const pred = predictWithKNN(
+          trainedModelRecord.knnExemplars,
+          detectedHands,
+          classes,
+          5
+        );
+        setLivePrediction(pred);
+      } else if (
+        trainingConfig.classifierType === "knn" &&
+        workspaceExemplars.length >= 4
+      ) {
+        const pred = predictWithKNN(workspaceExemplars, detectedHands, classes, 5);
         setLivePrediction(pred);
       } else {
         setLivePrediction(null);
       }
     },
-    [trainedModelRecord, trainingConfig.classifierType, samples, classes]
+    [trainedModelRecord, trainingConfig.classifierType, workspaceExemplars, classes]
   );
 
   // Train classifier in browser
@@ -275,7 +398,14 @@ export default function HandPoseStudioPage() {
     if (isTraining) return;
 
     if (trainingConfig.classifierType === "knn") {
-      const evalResult = evaluateKNN(samples, 5);
+      if (tfModelRef.current) {
+        tfModelRef.current.dispose();
+        tfModelRef.current = null;
+      }
+      setTrainingProgress([]);
+
+      const evalResult = evaluateKNN(workspaceExemplars, 5);
+
       const record: TrainedModelRecord = {
         id: `knn_${Date.now()}`,
         name: `k-NN Pose Classifier (${evalResult.classes.length} classes)`,
@@ -287,6 +417,7 @@ export default function HandPoseStudioPage() {
         epochs: 1,
         trainedAt: Date.now(),
         history: [],
+        knnExemplars: workspaceExemplars,
       };
       setTrainedModelRecord(record);
       return;
@@ -339,11 +470,16 @@ export default function HandPoseStudioPage() {
   };
 
   const handleRestoreModel = async (model: TrainedModelRecord) => {
+    if (tfModelRef.current) {
+      tfModelRef.current.dispose();
+      tfModelRef.current = null;
+    }
     setTrainedModelRecord(model);
+    setTrainingProgress(model.history || []);
+
     if (model.serializedModel) {
       try {
         const restored = await deserializeTFModel(model.serializedModel);
-        if (tfModelRef.current) tfModelRef.current.dispose();
         tfModelRef.current = restored;
       } catch (err) {
         console.error("Failed to deserialize model:", err);
@@ -618,6 +754,7 @@ export default function HandPoseStudioPage() {
         samples={samples}
         activeModel={trainedModelRecord}
         onRestoreWorkspace={(newClasses, newSamples) => {
+          clearActiveModel();
           setClasses(newClasses);
           setSamples(newSamples);
           setActiveClassName(newClasses[0]?.name || null);

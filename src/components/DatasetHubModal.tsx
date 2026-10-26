@@ -93,7 +93,18 @@ export default function DatasetHubModal({
     if (isOpen) {
       refreshLocalData();
     }
-  }, [isOpen]);
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 
@@ -127,6 +138,15 @@ export default function DatasetHubModal({
   };
 
   const handleLoadDataset = async (id: string) => {
+    if (samples.length > 0) {
+      const ok =
+        typeof window !== "undefined" &&
+        window.confirm(
+          `Loading this dataset will replace your current workspace (${samples.length} captured samples). Proceed?`
+        );
+      if (!ok) return;
+    }
+
     try {
       setLoadingLocal(true);
       const snap = await loadDatasetLocallyById(id);
@@ -143,6 +163,15 @@ export default function DatasetHubModal({
   };
 
   const handleDeleteDataset = async (id: string) => {
+    const snap = savedDatasets.find((d) => d.id === id);
+    const name = snap?.name || "this dataset snapshot";
+    if (
+      typeof window !== "undefined" &&
+      !window.confirm(`Delete saved dataset "${name}"? This cannot be undone.`)
+    ) {
+      return;
+    }
+
     try {
       await deleteDatasetLocally(id);
       setSavedDatasets((prev) => prev.filter((d) => d.id !== id));
@@ -152,6 +181,15 @@ export default function DatasetHubModal({
   };
 
   const handleDeleteModel = async (id: string) => {
+    const mdl = savedModels.find((m) => m.id === id);
+    const name = mdl?.name || "this model";
+    if (
+      typeof window !== "undefined" &&
+      !window.confirm(`Delete saved model "${name}"? This cannot be undone.`)
+    ) {
+      return;
+    }
+
     try {
       await deleteModelLocally(id);
       setSavedModels((prev) => prev.filter((m) => m.id !== id));
@@ -165,6 +203,19 @@ export default function DatasetHubModal({
   ) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    if (samples.length > 0) {
+      const ok =
+        typeof window !== "undefined" &&
+        window.confirm(
+          `Importing this dataset will replace your current workspace (${samples.length} captured samples). Proceed?`
+        );
+      if (!ok) {
+        if (fileInputRef.current) fileInputRef.current.value = "";
+        return;
+      }
+    }
+
     try {
       const text = await file.text();
       const imported = parseImportedDatasetJson(text);
@@ -183,8 +234,16 @@ export default function DatasetHubModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-3 sm:p-4 backdrop-blur-sm">
-      <div className="flex max-h-[88vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-ocean-700/60 bg-[#0e1d2f] shadow-2xl">
+    <div
+      role="dialog"
+      aria-modal="true"
+      onClick={onClose}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-3 sm:p-4 backdrop-blur-sm"
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="flex max-h-[88vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-ocean-700/60 bg-[#0e1d2f] shadow-2xl"
+      >
         {/* Modal Header */}
         <div className="flex items-center justify-between border-b border-ocean-700/50 bg-[#12253b] px-4 sm:px-6 py-3.5">
           <div className="flex items-center gap-2.5">

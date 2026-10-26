@@ -52,6 +52,11 @@ export interface SerializedTFModel {
   weightDataBase64: string;
 }
 
+export interface KNNExemplar {
+  className: string;
+  vec: number[];
+}
+
 export interface TrainedModelRecord {
   id: string;
   name: string;
@@ -64,6 +69,7 @@ export interface TrainedModelRecord {
   trainedAt: number;
   history: TrainingHistoryPoint[];
   serializedModel?: SerializedTFModel;
+  knnExemplars?: KNNExemplar[];
 }
 
 export interface PredictionResult {
