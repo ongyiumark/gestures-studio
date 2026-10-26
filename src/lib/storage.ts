@@ -98,6 +98,29 @@ function openDatabase(dbName: string = DB_NAME): Promise<IDBDatabase> {
   });
 }
 
+let cachedDbPromise: Promise<IDBDatabase> | null = null;
+
+function getDatabase(): Promise<IDBDatabase> {
+  if (!cachedDbPromise) {
+    cachedDbPromise = openDatabase(DB_NAME)
+      .then((db) => {
+        db.onversionchange = () => {
+          db.close();
+          cachedDbPromise = null;
+        };
+        db.onclose = () => {
+          cachedDbPromise = null;
+        };
+        return db;
+      })
+      .catch((err) => {
+        cachedDbPromise = null;
+        throw err;
+      });
+  }
+  return cachedDbPromise;
+}
+
 /**
  * Saves the active workspace (classes, captured samples, active trained model)
  * 100% locally in the user's browser (localStorage summary + IndexedDB for images/weights).
@@ -127,8 +150,8 @@ export async function saveWorkspaceLocally(
 
   // 2. Save full samples (with base64 thumbnails + 3D landmarks) & model weights to browser IndexedDB
   try {
-    const db = await openDatabase();
-    return new Promise((resolve, reject) => {
+    const db = await getDatabase();
+    await new Promise<void>((resolve, reject) => {
       const tx = db.transaction(STORE_WORKSPACE, "readwrite");
       const store = tx.objectStore(STORE_WORKSPACE);
       const record: PersistedWorkspace = {
@@ -138,18 +161,15 @@ export async function saveWorkspaceLocally(
         samples,
         activeModel,
       };
-      store.put(record);
-      tx.oncomplete = () => {
-        db.close();
-        resolve();
-      };
-      tx.onerror = () => {
-        db.close();
-        reject(tx.error);
-      };
+      const req = store.put(record);
+      req.onerror = () => reject(req.error);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+      tx.onabort = () => reject(tx.error || new Error("Transaction aborted"));
     });
   } catch (err) {
-    console.warn("Local browser storage save skipped:", err);
+    console.error("Local browser storage save failed:", err);
+    throw err;
   }
 }
 
@@ -158,17 +178,15 @@ export async function saveWorkspaceLocally(
  */
 export async function loadWorkspaceLocally(): Promise<PersistedWorkspace | null> {
   try {
-    const db = await openDatabase();
+    const db = await getDatabase();
     const active = await new Promise<PersistedWorkspace | null>((resolve, reject) => {
       const tx = db.transaction(STORE_WORKSPACE, "readonly");
       const store = tx.objectStore(STORE_WORKSPACE);
       const req = store.get("active");
       req.onsuccess = () => {
-        db.close();
         resolve((req.result as PersistedWorkspace) || null);
       };
       req.onerror = () => {
-        db.close();
         reject(req.error);
       };
     });
@@ -218,13 +236,12 @@ export async function loadWorkspaceLocally(): Promise<PersistedWorkspace | null>
  */
 export async function listLocalDatasets(): Promise<DatasetSnapshotSummary[]> {
   try {
-    const db = await openDatabase();
+    const db = await getDatabase();
     return new Promise((resolve, reject) => {
       const tx = db.transaction(STORE_DATASETS, "readonly");
       const store = tx.objectStore(STORE_DATASETS);
       const req = store.getAll();
       req.onsuccess = () => {
-        db.close();
         const all = (req.result as DatasetSnapshot[]) || [];
         const summaries: DatasetSnapshotSummary[] = all
           .map((snap) => ({
@@ -240,7 +257,6 @@ export async function listLocalDatasets(): Promise<DatasetSnapshotSummary[]> {
         resolve(summaries);
       };
       req.onerror = () => {
-        db.close();
         reject(req.error);
       };
     });
@@ -258,7 +274,7 @@ export async function saveDatasetLocally(params: {
   classes: PoseClassMeta[];
   samples: CapturedSample[];
 }): Promise<DatasetSnapshotSummary> {
-  const db = await openDatabase();
+  const db = await getDatabase();
   const now = Date.now();
   const snapshot: DatasetSnapshot = {
     id: `ds_${now}_${Math.random().toString(36).slice(2, 8)}`,
@@ -275,7 +291,6 @@ export async function saveDatasetLocally(params: {
     const store = tx.objectStore(STORE_DATASETS);
     store.put(snapshot);
     tx.oncomplete = () => {
-      db.close();
       resolve({
         id: snapshot.id,
         name: snapshot.name,
@@ -287,7 +302,6 @@ export async function saveDatasetLocally(params: {
       });
     };
     tx.onerror = () => {
-      db.close();
       reject(tx.error);
     };
   });
@@ -299,13 +313,12 @@ export async function saveDatasetLocally(params: {
 export async function loadDatasetLocallyById(
   id: string
 ): Promise<DatasetSnapshot> {
-  const db = await openDatabase();
+  const db = await getDatabase();
   return new Promise((resolve, reject) => {
     const tx = db.transaction(STORE_DATASETS, "readonly");
     const store = tx.objectStore(STORE_DATASETS);
     const req = store.get(id);
     req.onsuccess = () => {
-      db.close();
       if (!req.result) {
         reject(new Error("Dataset snapshot not found in local storage"));
       } else {
@@ -313,7 +326,6 @@ export async function loadDatasetLocallyById(
       }
     };
     req.onerror = () => {
-      db.close();
       reject(req.error);
     };
   });
@@ -323,17 +335,15 @@ export async function loadDatasetLocallyById(
  * Deletes a saved dataset snapshot by ID from the user's browser storage.
  */
 export async function deleteDatasetLocally(id: string): Promise<void> {
-  const db = await openDatabase();
+  const db = await getDatabase();
   return new Promise((resolve, reject) => {
     const tx = db.transaction(STORE_DATASETS, "readwrite");
     const store = tx.objectStore(STORE_DATASETS);
     store.delete(id);
     tx.oncomplete = () => {
-      db.close();
       resolve();
     };
     tx.onerror = () => {
-      db.close();
       reject(tx.error);
     };
   });
@@ -344,20 +354,18 @@ export async function deleteDatasetLocally(id: string): Promise<void> {
  */
 export async function listLocalModels(): Promise<TrainedModelRecord[]> {
   try {
-    const db = await openDatabase();
+    const db = await getDatabase();
     return new Promise((resolve, reject) => {
       const tx = db.transaction(STORE_MODELS, "readonly");
       const store = tx.objectStore(STORE_MODELS);
       const req = store.getAll();
       req.onsuccess = () => {
-        db.close();
         const models = ((req.result as TrainedModelRecord[]) || []).sort(
           (a, b) => b.trainedAt - a.trainedAt
         );
         resolve(models);
       };
       req.onerror = () => {
-        db.close();
         reject(req.error);
       };
     });
@@ -372,7 +380,7 @@ export async function listLocalModels(): Promise<TrainedModelRecord[]> {
 export async function saveModelLocally(
   modelRecord: TrainedModelRecord
 ): Promise<TrainedModelRecord> {
-  const db = await openDatabase();
+  const db = await getDatabase();
   const record: TrainedModelRecord = {
     ...modelRecord,
     id:
@@ -386,11 +394,9 @@ export async function saveModelLocally(
     const store = tx.objectStore(STORE_MODELS);
     store.put(record);
     tx.oncomplete = () => {
-      db.close();
       resolve(record);
     };
     tx.onerror = () => {
-      db.close();
       reject(tx.error);
     };
   });
@@ -400,17 +406,15 @@ export async function saveModelLocally(
  * Deletes a saved model from the user's browser storage.
  */
 export async function deleteModelLocally(id: string): Promise<void> {
-  const db = await openDatabase();
+  const db = await getDatabase();
   return new Promise((resolve, reject) => {
     const tx = db.transaction(STORE_MODELS, "readwrite");
     const store = tx.objectStore(STORE_MODELS);
     store.delete(id);
     tx.oncomplete = () => {
-      db.close();
       resolve();
     };
     tx.onerror = () => {
-      db.close();
       reject(tx.error);
     };
   });

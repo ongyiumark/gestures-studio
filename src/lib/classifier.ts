@@ -2,6 +2,7 @@ import * as tf from "@tensorflow/tfjs";
 import {
   CapturedSample,
   DetectedHand,
+  KNNExemplar,
   PoseClassMeta,
   PredictionResult,
   SerializedTFModel,
@@ -133,7 +134,9 @@ export async function trainMLPClassifier(
   const numClasses = classes.length;
   const inputDim = prepared.features[0]?.length || FEATURE_VECTOR_SIZE;
   const xs = tf.tensor2d(shuffledFeatures, [shuffledFeatures.length, inputDim]);
-  const ys = tf.oneHot(tf.tensor1d(shuffledLabels, "int32"), numClasses);
+  const labelsTensor = tf.tensor1d(shuffledLabels, "int32");
+  const ys = tf.oneHot(labelsTensor, numClasses);
+  labelsTensor.dispose();
 
   const model = tf.sequential();
   model.add(
@@ -170,46 +173,79 @@ export async function trainMLPClassifier(
   // Yield one animation frame so the UI paints the initial training state before computation begins
   await tf.nextFrame();
 
-  await model.fit(xs, ys, {
-    epochs: config.epochs,
-    batchSize: config.batchSize,
-    validationSplit,
-    shuffle: true,
-    callbacks: {
-      onEpochEnd: async (epoch, logs) => {
-        const point: TrainingHistoryPoint = {
-          epoch: epoch + 1,
-          loss: Number((logs?.loss ?? 0).toFixed(4)),
-          accuracy: Number(((logs?.acc ?? logs?.accuracy ?? 0) * 100).toFixed(1)),
-          valLoss:
-            logs?.val_loss !== undefined
-              ? Number(logs.val_loss.toFixed(4))
-              : undefined,
-          valAccuracy:
-            logs?.val_acc !== undefined || logs?.val_accuracy !== undefined
-              ? Number(
-                  ((logs?.val_acc ?? logs?.val_accuracy ?? 0) * 100).toFixed(1)
-                )
-              : undefined,
-        };
-        history.push(point);
-        onProgress(point);
-        await tf.nextFrame();
+  let trainedSuccessfully = false;
+  try {
+    await model.fit(xs, ys, {
+      epochs: config.epochs,
+      batchSize: config.batchSize,
+      validationSplit,
+      shuffle: true,
+      callbacks: {
+        onEpochEnd: async (epoch, logs) => {
+          const point: TrainingHistoryPoint = {
+            epoch: epoch + 1,
+            loss: Number((logs?.loss ?? 0).toFixed(4)),
+            accuracy: Number(((logs?.acc ?? logs?.accuracy ?? 0) * 100).toFixed(1)),
+            valLoss:
+              logs?.val_loss !== undefined
+                ? Number(logs.val_loss.toFixed(4))
+                : undefined,
+            valAccuracy:
+              logs?.val_acc !== undefined || logs?.val_accuracy !== undefined
+                ? Number(
+                    ((logs?.val_acc ?? logs?.val_accuracy ?? 0) * 100).toFixed(1)
+                  )
+                : undefined,
+          };
+          history.push(point);
+          onProgress(point);
+          await tf.nextFrame();
+        },
       },
-    },
-  });
+    });
 
-  xs.dispose();
-  ys.dispose();
+    const serializedModel = await serializeTFModel(model);
+    trainedSuccessfully = true;
 
-  const serializedModel = await serializeTFModel(model);
+    return {
+      model,
+      classes,
+      history,
+      serializedModel,
+    };
+  } finally {
+    xs.dispose();
+    ys.dispose();
+    if (!trainedSuccessfully) {
+      model.dispose();
+    }
+  }
+}
 
-  return {
-    model,
-    classes,
-    history,
-    serializedModel,
-  };
+/**
+ * High-performance chunked conversion from Uint8Array to Base64
+ * avoiding string allocation memory churn on large typed arrays.
+ */
+export function uint8ArrayToBase64(bytes: Uint8Array): string {
+  let binary = "";
+  const chunkSize = 8192;
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    const chunk = bytes.subarray(i, i + chunkSize);
+    binary += String.fromCharCode.apply(null, chunk as unknown as number[]);
+  }
+  return btoa(binary);
+}
+
+/**
+ * Decodes a base64 string directly into a Uint8Array buffer.
+ */
+export function base64ToUint8Array(base64: string): Uint8Array {
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return bytes;
 }
 
 /**
@@ -225,11 +261,7 @@ export async function serializeTFModel(
     tf.io.withSaveHandler(async (artifacts) => {
       const weightBuffer = artifacts.weightData as ArrayBuffer;
       const bytes = new Uint8Array(weightBuffer);
-      let binary = "";
-      for (let i = 0; i < bytes.byteLength; i++) {
-        binary += String.fromCharCode(bytes[i]);
-      }
-      const weightDataBase64 = btoa(binary);
+      const weightDataBase64 = uint8ArrayToBase64(bytes);
 
       captured = {
         modelTopology: artifacts.modelTopology,
@@ -260,11 +292,7 @@ export async function deserializeTFModel(
   serialized: SerializedTFModel
 ): Promise<tf.LayersModel> {
   await ensureTFBackend();
-  const binary = atob(serialized.weightDataBase64);
-  const bytes = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i++) {
-    bytes[i] = binary.charCodeAt(i);
-  }
+  const bytes = base64ToUint8Array(serialized.weightDataBase64);
 
   return tf.loadLayersModel(
     tf.io.fromMemory({
@@ -320,24 +348,19 @@ export function predictWithMLP(
 }
 
 /**
- * Instant k-Nearest Neighbors (k-NN) classifier over normalized 63-D landmark vectors.
+ * Instant k-Nearest Neighbors (k-NN) classifier over normalized landmark vectors.
  * Uses distance-weighted voting over the top k=5 neighbors.
  */
 export function predictWithKNN(
-  samples: CapturedSample[],
+  exemplars: KNNExemplar[],
   hands: DetectedHand[],
   classMeta: PoseClassMeta[],
   k = 5
 ): PredictionResult | null {
   const queryVec = extractFeatureVector(hands);
-  if (!queryVec) return null;
+  if (!queryVec || exemplars.length === 0) return null;
 
-  const validSamples: { className: string; vec: number[] }[] = [];
-  for (const s of samples) {
-    const v = extractFeatureVector(s.hands);
-    if (v) validSamples.push({ className: s.className, vec: v });
-  }
-
+  const validSamples = exemplars;
   const classes = Array.from(new Set(validSamples.map((s) => s.className))).sort();
   if (classes.length < 2) return null;
 
@@ -390,31 +413,31 @@ export function predictWithKNN(
 /**
  * Evaluates Leave-One-Out (LOO) cross-validation accuracy for k-NN on the dataset.
  */
-export function evaluateKNN(samples: CapturedSample[], k = 5): {
+export function evaluateKNN(exemplars: KNNExemplar[], k = 5): {
   accuracy: number;
   classes: string[];
 } {
-  const valid = samples
-    .map((s) => ({ className: s.className, vec: extractFeatureVector(s.hands) }))
-    .filter((s): s is { className: string; vec: number[] } => s.vec !== null);
-
-  const classes = Array.from(new Set(valid.map((s) => s.className))).sort();
-  if (classes.length < 2 || valid.length < 2) {
+  const classes = Array.from(new Set(exemplars.map((s) => s.className))).sort();
+  if (classes.length < 2 || exemplars.length < 2) {
     return { accuracy: 0, classes };
   }
 
   let correct = 0;
-  for (let i = 0; i < valid.length; i++) {
-    const query = valid[i];
-    const others = valid.filter((_, idx) => idx !== i);
-    const dists = others.map((o) => {
+  for (let i = 0; i < exemplars.length; i++) {
+    const query = exemplars[i];
+    const dists: { className: string; dist: number }[] = [];
+
+    for (let j = 0; j < exemplars.length; j++) {
+      if (j === i) continue;
+      const other = exemplars[j];
       let sumSq = 0;
-      for (let j = 0; j < query.vec.length; j++) {
-        const d = query.vec[j] - o.vec[j];
-        sumSq += d * d;
+      for (let d = 0; d < query.vec.length; d++) {
+        const diff = query.vec[d] - other.vec[d];
+        sumSq += diff * diff;
       }
-      return { className: o.className, dist: Math.sqrt(sumSq) };
-    });
+      dists.push({ className: other.className, dist: Math.sqrt(sumSq) });
+    }
+
     dists.sort((a, b) => a.dist - b.dist);
     const topK = dists.slice(0, Math.min(k, dists.length));
     const votes = new Map<string, number>();
@@ -434,7 +457,7 @@ export function evaluateKNN(samples: CapturedSample[], k = 5): {
   }
 
   return {
-    accuracy: Number(((correct / valid.length) * 100).toFixed(1)),
+    accuracy: Number(((correct / exemplars.length) * 100).toFixed(1)),
     classes,
   };
 }

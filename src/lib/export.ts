@@ -9,8 +9,10 @@ import {
   extractFeatureVector,
   FEATURE_VECTOR_SIZE,
   formatHandAnnotationsForExport,
+  getClassColor,
   LANDMARK_NAMES,
 } from "@/lib/landmarks";
+import { base64ToUint8Array } from "@/lib/classifier";
 
 /**
  * Generates CSV content containing both raw normalized (x,y,z) and
@@ -90,14 +92,14 @@ export async function exportDatasetZip(
   const root = zip.folder(safeRoot);
   if (!root) return;
 
-  for (const sample of samples) {
+  for (const [idx, sample] of samples.entries()) {
     const safeClass =
       sample.className.trim().replace(/[^a-zA-Z0-9_-]/g, "_") || "unlabeled";
     const classFolder = root.folder(safeClass);
     if (!classFolder) continue;
 
     const shortId = sample.id.slice(0, 8);
-    const baseName = `${safeClass}-${shortId}`;
+    const baseName = `${safeClass}-${idx+1}_${shortId}`;
 
     if (sample.imageDataUrl && sample.imageDataUrl.includes(",")) {
       const base64Img = sample.imageDataUrl.split(",")[1];
@@ -176,18 +178,97 @@ export function parseImportedDatasetJson(jsonText: string): {
   samples: CapturedSample[];
   name?: string;
 } {
-  const parsed = JSON.parse(jsonText);
-  if (!parsed || !Array.isArray(parsed.samples)) {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(jsonText);
+  } catch {
+    throw new Error("Invalid JSON: Failed to parse file.");
+  }
+  if (!parsed || typeof parsed !== "object") {
+    throw new Error("Invalid dataset: Root must be a JSON object.");
+  }
+  const raw = parsed as Record<string, unknown>;
+  if (!Array.isArray(raw.samples)) {
     throw new Error("Invalid dataset JSON: missing 'samples' array.");
   }
-  const classes: PoseClassMeta[] = Array.isArray(parsed.classes)
-    ? parsed.classes
-    : [];
-  const samples: CapturedSample[] = parsed.samples;
+
+  // Validate each sample and its 21 landmarks
+  const validSamples: CapturedSample[] = [];
+  for (let i = 0; i < raw.samples.length; i++) {
+    const s = raw.samples[i];
+    if (!s || typeof s !== "object") continue;
+    const className = typeof s.className === "string" ? s.className.trim() : "";
+    if (!className || !Array.isArray(s.hands) || s.hands.length === 0) continue;
+
+    const validHands = s.hands
+      .filter((h: unknown) => h && typeof h === "object")
+      .map((h: Record<string, unknown>) => {
+        const handedness = h.handedness === "Left" ? "Left" : "Right";
+        const score = typeof h.score === "number" && !isNaN(h.score) ? h.score : 0.9;
+        const landmarks = Array.isArray(h.landmarks)
+          ? h.landmarks
+              .filter((lm: unknown) => lm && typeof lm === "object")
+              .map((lm: Record<string, unknown>) => ({
+                x: typeof lm.x === "number" && !isNaN(lm.x) ? lm.x : 0,
+                y: typeof lm.y === "number" && !isNaN(lm.y) ? lm.y : 0,
+                z: typeof lm.z === "number" && !isNaN(lm.z) ? lm.z : 0,
+              }))
+          : [];
+        return { handedness, score, landmarks };
+      })
+      .filter((h: { landmarks: unknown[] }) => h.landmarks.length === 21);
+
+    if (validHands.length === 0) continue;
+
+    validSamples.push({
+      id: typeof s.id === "string" && s.id ? s.id : `sample_${Date.now()}_${i}`,
+      className,
+      timestamp: typeof s.timestamp === "number" ? s.timestamp : Date.now(),
+      imageDataUrl: typeof s.imageDataUrl === "string" ? s.imageDataUrl : "",
+      hands: validHands,
+      width: typeof s.width === "number" ? s.width : 640,
+      height: typeof s.height === "number" ? s.height : 480,
+    });
+  }
+
+  if (validSamples.length === 0 && raw.samples.length > 0) {
+    throw new Error("Invalid dataset: No samples contained valid 21-point hand landmark data.");
+  }
+
+  // Validate classes and auto-reconstruct any missing classes found in samples
+  const rawClasses = Array.isArray(raw.classes) ? raw.classes : [];
+  const knownClassNames = new Set<string>();
+  const validClasses: PoseClassMeta[] = [];
+
+  for (const c of rawClasses) {
+    if (c && typeof c === "object" && typeof c.name === "string" && c.name.trim()) {
+      const name = c.name.trim();
+      if (!knownClassNames.has(name.toLowerCase())) {
+        knownClassNames.add(name.toLowerCase());
+        validClasses.push({
+          name,
+          color: typeof c.color === "string" && c.color ? c.color : getClassColor(validClasses.length),
+          createdAt: typeof c.createdAt === "number" ? c.createdAt : Date.now(),
+        });
+      }
+    }
+  }
+
+  for (const s of validSamples) {
+    if (!knownClassNames.has(s.className.toLowerCase())) {
+      knownClassNames.add(s.className.toLowerCase());
+      validClasses.push({
+        name: s.className,
+        color: getClassColor(validClasses.length),
+        createdAt: Date.now(),
+      });
+    }
+  }
+
   return {
-    classes,
-    samples,
-    name: typeof parsed.name === "string" ? parsed.name : undefined,
+    classes: validClasses,
+    samples: validSamples,
+    name: typeof raw.name === "string" ? raw.name : undefined,
   };
 }
 
@@ -220,11 +301,7 @@ export async function exportTrainedModelZip(record: TrainedModelRecord) {
     ],
   };
 
-  const binary = atob(weightDataBase64);
-  const weightBytes = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i++) {
-    weightBytes[i] = binary.charCodeAt(i);
-  }
+  const weightBytes = base64ToUint8Array(weightDataBase64);
 
   zip.file("model.json", JSON.stringify(modelJson, null, 2));
   zip.file("model.weights.bin", weightBytes);
@@ -271,16 +348,28 @@ function normalizeSingleHand(landmarks21) {
   };
 }
 
+function sortDetectedHands(hands) {
+  if (hands.length <= 1) return hands;
+  const left = hands.find(h => h.handedness === 'Left');
+  const right = hands.find(h => h.handedness === 'Right');
+  if (left && right) return [left, right];
+  return [...hands].sort((a, b) => (a.landmarks[0]?.x ?? 0) - (b.landmarks[0]?.x ?? 0));
+}
+
 export function extractFeatureVector(detectedHands) {
   if (!detectedHands || detectedHands.length === 0) return null;
+  const validHands = detectedHands.filter(h => h.landmarks && h.landmarks.length >= 21);
+  if (validHands.length === 0) return null;
+
+  const sorted = sortDetectedHands(validHands);
   const out = new Array(FEATURE_DIM).fill(0);
-  const hand1 = detectedHands[0];
+  const hand1 = sorted[0];
   const norm1 = normalizeSingleHand(hand1.landmarks);
   for (let i = 0; i < 63; i++) out[i] = norm1.features[i];
   out[129] = 1.0;
 
-  if (detectedHands.length > 1) {
-    const hand2 = detectedHands[1];
+  if (sorted.length > 1) {
+    const hand2 = sorted[1];
     const norm2 = normalizeSingleHand(hand2.landmarks);
     for (let i = 0; i < 63; i++) out[63 + i] = norm2.features[i];
     const w1 = hand1.landmarks[0];

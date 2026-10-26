@@ -56,6 +56,10 @@ export default function CameraStage({
   const lastStateUpdateRef = useRef<number>(0);
   const fpsTimestampsRef = useRef<number[]>([]);
   const latestHandsRef = useRef<DetectedHand[]>([]);
+  const onHandsDetectedRef = useRef(onHandsDetected);
+  useEffect(() => {
+    onHandsDetectedRef.current = onHandsDetected;
+  }, [onHandsDetected]);
 
   const [cameraOn, setCameraOn] = useState<boolean>(true);
   const [cameraError, setCameraError] = useState<string | null>(null);
@@ -196,6 +200,7 @@ export default function CameraStage({
 
         if (cancelled) {
           landmarker.close();
+          if (activeCanvas) activeCanvas.remove();
           return;
         }
 
@@ -227,7 +232,23 @@ export default function CameraStage({
         activeCanvasRef.current = null;
       }
     };
-  }, [onModelStatusChange, retryCount, maxHands, minConfidence, activeDelegate]);
+  }, [onModelStatusChange, retryCount, activeDelegate]);
+
+  // Dynamically update confidence thresholds and max hands without re-instantiating WASM or reloading model
+  useEffect(() => {
+    if (landmarkerRef.current) {
+      try {
+        landmarkerRef.current.setOptions({
+          numHands: maxHands,
+          minHandDetectionConfidence: minConfidence,
+          minHandPresenceConfidence: Math.max(0.18, minConfidence - 0.15),
+          minTrackingConfidence: Math.max(0.18, minConfidence - 0.15),
+        });
+      } catch (err) {
+        console.warn("Failed to update HandLandmarker options dynamically:", err);
+      }
+    }
+  }, [minConfidence, maxHands]);
 
   // Start / Stop Webcam Stream
   useEffect(() => {
@@ -386,16 +407,17 @@ export default function CameraStage({
             }
             const currentFps = timestamps.length;
 
-            onHandsDetected(detected, currentFps);
-            setFpsVal(currentFps);
-            setVideoStatus(`${vw}×${vh}`);
+            onHandsDetectedRef.current(detected, currentFps);
             if (videoPaused) setVideoPaused(false);
             if (lastDetectError) setLastDetectError(null);
 
-            // Throttle React state update to 10 FPS to keep main thread fast
+            // Throttle React state telemetry to ~10 FPS to keep main thread fast and prevent frame drops
             if (nowMs - lastStateUpdateRef.current >= 100) {
               lastStateUpdateRef.current = nowMs;
               setLiveHands(detected);
+              setFpsVal(currentFps);
+              const currentRes = `${vw}×${vh}`;
+              setVideoStatus((prev) => (prev === currentRes ? prev : currentRes));
             }
 
             // Real-time canvas skeleton rendering (60 FPS, direct 2D context)
@@ -406,6 +428,7 @@ export default function CameraStage({
                   compact: false,
                   showLabels: true,
                   accentColor: activeClass?.color,
+                  mirrored
                 });
               } else {
                 ctx.clearRect(0, 0, vw, vh);
@@ -439,7 +462,7 @@ export default function CameraStage({
       running = false;
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
     };
-  }, [cameraOn, showSkeleton, activeClass?.color, onHandsDetected]);
+  }, [cameraOn, showSkeleton, activeClass?.color, mirrored]);
 
   // Capture a single frame + current 21-keypoint hand landmarks
   const captureNow = useCallback((): boolean => {
@@ -497,7 +520,16 @@ export default function CameraStage({
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement)?.tagName;
-      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+      if (
+        tag === "INPUT" ||
+        tag === "TEXTAREA" ||
+        tag === "SELECT" ||
+        tag === "BUTTON" ||
+        (e.target as HTMLElement)?.isContentEditable ||
+        (e.target as HTMLElement)?.closest?.('[role="dialog"], [aria-modal="true"]')
+      ) {
+        return;
+      }
       if (e.code === "Space") {
         e.preventDefault();
         captureNow();
@@ -813,9 +845,7 @@ export default function CameraStage({
 
         <canvas
           ref={canvasRef}
-          className={`pointer-events-none absolute inset-0 h-full w-full object-cover ${
-            mirrored ? "-scale-x-100" : ""
-          }`}
+          className="pointer-events-none absolute inset-0 h-full w-full object-cover"
         />
 
         {/* Live Diagnostics HUD */}
@@ -976,50 +1006,46 @@ export default function CameraStage({
 
         {/* Live Real-Time Prediction HUD Overlay */}
         {classifierActive && livePrediction && handDetected && (
-          <div className="pointer-events-none absolute bottom-3 left-3 right-3 flex flex-col gap-2 rounded-xl border border-ocean-400/30 bg-[#091726]/60 p-2.5 sm:p-3 shadow-2xl backdrop-blur-md sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center gap-2.5 sm:gap-3">
-              <div className="flex h-8 w-8 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-lg bg-ocean-500/25 text-sky-300">
-                <Sparkles className="h-4 w-4 sm:h-5 sm:w-5" />
+          <div className="pointer-events-none absolute bottom-2.5 left-2.5 sm:bottom-3 sm:left-3 max-w-[calc(100%-1.25rem)] sm:max-w-[240px] rounded-xl border border-ocean-400/30 bg-[#081524]/85 px-2.5 py-1.5 sm:px-3 sm:py-2 shadow-xl backdrop-blur-md">
+            <div className="flex items-center justify-between gap-2.5">
+              <div className="flex items-center gap-1.5 min-w-0">
+                <Sparkles className="h-3.5 w-3.5 text-gold-300 shrink-0" />
+                <span className="truncate text-xs sm:text-sm font-bold text-white">
+                  {livePrediction.className}
+                </span>
               </div>
-              <div>
-                <div className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-sky-300/90">
-                  Live Prediction
-                </div>
-                <div className="flex items-baseline gap-2">
-                  <span className="text-base sm:text-lg font-extrabold text-white drop-shadow-sm">
-                    {livePrediction.className}
-                  </span>
-                  <span className="font-mono text-xs font-bold text-emerald-400">
-                    {(livePrediction.confidence * 100).toFixed(1)}%
-                  </span>
-                </div>
-              </div>
+              <span className="font-mono text-xs font-bold text-emerald-400 shrink-0">
+                {(livePrediction.confidence * 100).toFixed(0)}%
+              </span>
             </div>
 
-            <div className="flex flex-1 max-w-xs flex-col gap-1">
-              {livePrediction.probabilities.slice(0, 3).map((item) => (
-                <div
-                  key={item.className}
-                  className="flex items-center gap-2 text-[11px]"
-                >
-                  <span className="w-20 truncate text-right font-medium text-slate-200">
-                    {item.className}
-                  </span>
-                  <div className="h-2 flex-1 overflow-hidden rounded-full bg-slate-900/60 border border-white/5">
-                    <div
-                      className="h-full rounded-full transition-all duration-150"
-                      style={{
-                        width: `${Math.max(2, item.probability * 100)}%`,
-                        backgroundColor: item.color,
-                      }}
-                    />
+            {/* Compact Top-2 Alternative Class Probabilities */}
+            {livePrediction.probabilities.length > 1 && (
+              <div className="mt-1.5 flex flex-col gap-1 border-t border-ocean-700/50 pt-1">
+                {livePrediction.probabilities.slice(0, 2).map((item) => (
+                  <div
+                    key={item.className}
+                    className="flex items-center gap-1.5 text-[10px]"
+                  >
+                    <span className="w-14 truncate text-right text-slate-300">
+                      {item.className}
+                    </span>
+                    <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-slate-900/80 border border-white/5">
+                      <div
+                        className="h-full rounded-full transition-all duration-150"
+                        style={{
+                          width: `${Math.max(2, item.probability * 100)}%`,
+                          backgroundColor: item.color,
+                        }}
+                      />
+                    </div>
+                    <span className="w-7 text-right font-mono text-[9px] text-slate-400">
+                      {(item.probability * 100).toFixed(0)}%
+                    </span>
                   </div>
-                  <span className="w-9 font-mono text-[10px] text-slate-300">
-                    {(item.probability * 100).toFixed(0)}%
-                  </span>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>

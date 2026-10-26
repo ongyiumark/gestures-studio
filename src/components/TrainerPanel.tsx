@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import {
   Activity,
   BrainCircuit,
@@ -34,7 +34,10 @@ interface TrainerPanelProps {
   onSaveModelLocally: () => Promise<void>;
 }
 
-export default function TrainerPanel({
+const CHART_W = 360;
+const CHART_H = 110;
+
+function TrainerPanel({
   samples,
   config,
   onChangeConfig,
@@ -51,15 +54,19 @@ export default function TrainerPanel({
   const [savedNotice, setSavedNotice] = useState(false);
 
   // Check how many classes have at least 1 valid sample
-  const classSampleCounts = new Map<string, number>();
-  for (const s of samples) {
-    if (s.hands && s.hands.length > 0) {
-      classSampleCounts.set(
-        s.className,
-        (classSampleCounts.get(s.className) || 0) + 1
-      );
+  const classSampleCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const s of samples) {
+      if (s.hands && s.hands.length > 0) {
+        counts.set(
+          s.className,
+          (counts.get(s.className) || 0) + 1
+        );
+      }
     }
-  }
+    return counts;
+  }, [samples]);
+
   const populatedClasses = Array.from(classSampleCounts.entries());
   const canTrain = populatedClasses.length >= 2 && !isTraining;
 
@@ -84,33 +91,38 @@ export default function TrainerPanel({
     }
   };
 
+  const chartW = CHART_W;
+  const chartH = CHART_H;
+
   // Build SVG polyline points for Accuracy & Loss curves
-  const chartW = 360;
-  const chartH = 110;
-  const maxEpochs = Math.max(config.epochs, historyToDisplay.length, 10);
-  const maxLoss = Math.max(1.5, ...historyToDisplay.map((p) => p.loss));
+  const { accPoints, lossPoints } = useMemo(() => {
+    const maxEpochs = Math.max(config.epochs, historyToDisplay.length, 10);
+    const maxLoss = Math.max(1.5, ...historyToDisplay.map((p) => p.loss));
 
-  const accPoints = historyToDisplay
-    .map((pt, i) => {
-      const x =
-        historyToDisplay.length === 1
-          ? chartW / 2
-          : (i / Math.max(1, maxEpochs - 1)) * (chartW - 16) + 8;
-      const y = chartH - 10 - (pt.accuracy / 100) * (chartH - 20);
-      return `${x.toFixed(1)},${y.toFixed(1)}`;
-    })
-    .join(" ");
+    const acc = historyToDisplay
+      .map((pt, i) => {
+        const x =
+          historyToDisplay.length === 1
+            ? chartW / 2
+            : (i / Math.max(1, maxEpochs - 1)) * (chartW - 16) + 8;
+        const y = chartH - 10 - (pt.accuracy / 100) * (chartH - 20);
+        return `${x.toFixed(1)},${y.toFixed(1)}`;
+      })
+      .join(" ");
 
-  const lossPoints = historyToDisplay
-    .map((pt, i) => {
-      const x =
-        historyToDisplay.length === 1
-          ? chartW / 2
-          : (i / Math.max(1, maxEpochs - 1)) * (chartW - 16) + 8;
-      const y = chartH - 10 - Math.min(1, pt.loss / maxLoss) * (chartH - 20);
-      return `${x.toFixed(1)},${y.toFixed(1)}`;
-    })
-    .join(" ");
+    const loss = historyToDisplay
+      .map((pt, i) => {
+        const x =
+          historyToDisplay.length === 1
+            ? chartW / 2
+            : (i / Math.max(1, maxEpochs - 1)) * (chartW - 16) + 8;
+        const y = chartH - 10 - Math.min(1, pt.loss / maxLoss) * (chartH - 20);
+        return `${x.toFixed(1)},${y.toFixed(1)}`;
+      })
+      .join(" ");
+
+    return { accPoints: acc, lossPoints: loss };
+  }, [historyToDisplay, config.epochs, chartW, chartH]);
 
   return (
     <div className="rounded-2xl border border-ocean-700/50 bg-[#101e2e]/90 p-4 shadow-xl">
@@ -451,3 +463,5 @@ export default function TrainerPanel({
     </div>
   );
 }
+
+export default React.memo(TrainerPanel);
