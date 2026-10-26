@@ -119,6 +119,10 @@ export default function HandPoseStudioPage() {
 
         if (saved.activeModel) {
           setTrainedModelRecord(saved.activeModel);
+          setTrainingConfig((prev) => ({
+            ...prev,
+            classifierType: saved.activeModel!.classifierType,
+          }));
           if (saved.activeModel.serializedModel) {
             try {
               const restored = await deserializeTFModel(
@@ -476,6 +480,10 @@ export default function HandPoseStudioPage() {
     }
     setTrainedModelRecord(model);
     setTrainingProgress(model.history || []);
+    setTrainingConfig((prev) => ({
+      ...prev,
+      classifierType: model.classifierType,
+    }));
 
     if (model.serializedModel) {
       try {
