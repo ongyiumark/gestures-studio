@@ -55,9 +55,18 @@ const SampleCard = React.memo(function SampleCard({
 
   return (
     <div
+      role="button"
+      tabIndex={0}
       onClick={() => onPreview(sample)}
-      className="group relative aspect-[4/3] overflow-hidden rounded-xl border border-ocean-800/60 bg-[#08121d] shadow-sm transition hover:border-ocean-400 hover:scale-[1.02] cursor-pointer"
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onPreview(sample);
+        }
+      }}
+      className="group relative aspect-[4/3] overflow-hidden rounded-xl border border-ocean-800/60 bg-[#08121d] shadow-sm transition hover:border-ocean-400 hover:scale-[1.02] focus:outline-none focus:ring-2 focus:ring-ocean-400 cursor-pointer"
       title="Click to blow up & preview sample"
+      aria-label={`Preview sample for ${sample.className}`}
     >
       {sample.imageDataUrl ? (
         <Image
@@ -426,8 +435,17 @@ function ClassManager({
             return (
               <div
                 key={cls.name}
+                role="button"
+                tabIndex={isEditing ? -1 : 0}
+                aria-pressed={isSelected}
                 onClick={() => !isEditing && onSelectClass(cls.name)}
-                className={`group flex cursor-pointer items-center justify-between gap-2 rounded-xl border p-2.5 transition ${
+                onKeyDown={(e) => {
+                  if (!isEditing && (e.key === "Enter" || e.key === " ")) {
+                    e.preventDefault();
+                    onSelectClass(cls.name);
+                  }
+                }}
+                className={`group flex cursor-pointer items-center justify-between gap-2 rounded-xl border p-2.5 transition focus:outline-none focus:ring-2 focus:ring-ocean-400 ${
                   isSelected
                     ? "border-terracotta-500/70 bg-[#162e47] shadow-sm shadow-terracotta-950/20"
                     : "border-ocean-800/60 bg-[#0a1624]/80 hover:border-ocean-700"

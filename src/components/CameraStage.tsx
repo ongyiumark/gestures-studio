@@ -264,6 +264,9 @@ export default function CameraStage({
         }
         setLiveHands([]);
         latestHandsRef.current = [];
+        setCountdown(null);
+        setIsBursting(false);
+        setBurstCount(0);
         return;
       }
 
