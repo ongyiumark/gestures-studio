@@ -7,6 +7,7 @@ import {
 } from "@/types/handpose";
 import {
   extractFeatureVector,
+  FEATURE_VECTOR_SIZE,
   formatHandAnnotationsForExport,
   LANDMARK_NAMES,
 } from "@/lib/landmarks";
@@ -20,28 +21,35 @@ export function buildLandmarksCsvString(samples: CapturedSample[]): string {
     "sample_id",
     "class_name",
     "timestamp",
-    "handedness",
-    "confidence_score",
+    "hands_count",
+    "primary_handedness",
+    "primary_confidence",
   ];
 
   for (const name of LANDMARK_NAMES) {
-    headerCols.push(`${name}_x`, `${name}_y`, `${name}_z`);
+    headerCols.push(`h1_${name}_x`, `h1_${name}_y`, `h1_${name}_z`);
   }
   for (const name of LANDMARK_NAMES) {
-    headerCols.push(`${name}_norm_x`, `${name}_norm_y`, `${name}_norm_z`);
+    headerCols.push(`h1_${name}_norm_x`, `h1_${name}_norm_y`, `h1_${name}_norm_z`);
   }
+  for (const name of LANDMARK_NAMES) {
+    headerCols.push(`h2_${name}_norm_x`, `h2_${name}_norm_y`, `h2_${name}_norm_z`);
+  }
+  headerCols.push("inter_hand_offset_x", "inter_hand_offset_y", "inter_hand_offset_z");
+  headerCols.push("hand1_present", "hand2_present");
 
   const rows: string[] = [headerCols.join(",")];
 
   for (const sample of samples) {
     if (!sample.hands || sample.hands.length === 0) continue;
     const primary = sample.hands[0];
-    const normVec = extractFeatureVector(sample.hands) || new Array(63).fill(0);
+    const normVec = extractFeatureVector(sample.hands) || new Array(FEATURE_VECTOR_SIZE).fill(0);
 
     const row: (string | number)[] = [
       `"${sample.id}"`,
       `"${sample.className.replace(/"/g, '""')}"`,
       sample.timestamp,
+      sample.hands.length,
       primary.handedness,
       Number(primary.score.toFixed(4)),
     ];
@@ -229,9 +237,9 @@ export async function exportTrainedModelZip(record: TrainedModelRecord) {
         classes: record.classes,
         finalAccuracy: record.finalAccuracy,
         trainedAt: new Date(record.trainedAt).toISOString(),
-        inputShape: [1, 63],
+        inputShape: [1, FEATURE_VECTOR_SIZE],
         preprocessing:
-          "Wrist-centered (landmark 0 subtracted) and divided by max 3D Euclidean distance from wrist.",
+          "Normalized 131-D feature vector: Hand 1 (63), Hand 2 (63), relative wrist offset (3), presence flags (2). Supports both 1-hand and 2-hand gestures.",
       },
       null,
       2
@@ -242,13 +250,14 @@ export async function exportTrainedModelZip(record: TrainedModelRecord) {
 import * as tf from '@tensorflow/tfjs';
 
 const CLASSES = ${JSON.stringify(record.classes)};
+const FEATURE_DIM = ${FEATURE_VECTOR_SIZE};
 
 export async function loadPoseClassifier() {
   const model = await tf.loadLayersModel('./model.json');
   return model;
 }
 
-export function normalizeLandmarks(landmarks21) {
+function normalizeSingleHand(landmarks21) {
   const wrist = landmarks21[0];
   const centered = landmarks21.map(p => ({
     x: p.x - wrist.x,
@@ -256,13 +265,39 @@ export function normalizeLandmarks(landmarks21) {
     z: p.z - wrist.z,
   }));
   const maxDist = Math.max(...centered.map(p => Math.hypot(p.x, p.y, p.z)), 1e-6);
-  return centered.flatMap(p => [p.x / maxDist, p.y / maxDist, p.z / maxDist]);
+  return {
+    features: centered.flatMap(p => [p.x / maxDist, p.y / maxDist, p.z / maxDist]),
+    scale: maxDist,
+  };
 }
 
-export function predictPose(model, landmarks21) {
-  const features = normalizeLandmarks(landmarks21);
+export function extractFeatureVector(detectedHands) {
+  if (!detectedHands || detectedHands.length === 0) return null;
+  const out = new Array(FEATURE_DIM).fill(0);
+  const hand1 = detectedHands[0];
+  const norm1 = normalizeSingleHand(hand1.landmarks);
+  for (let i = 0; i < 63; i++) out[i] = norm1.features[i];
+  out[129] = 1.0;
+
+  if (detectedHands.length > 1) {
+    const hand2 = detectedHands[1];
+    const norm2 = normalizeSingleHand(hand2.landmarks);
+    for (let i = 0; i < 63; i++) out[63 + i] = norm2.features[i];
+    const w1 = hand1.landmarks[0];
+    const w2 = hand2.landmarks[0];
+    out[126] = (w2.x - w1.x) / norm1.scale;
+    out[127] = (w2.y - w1.y) / norm1.scale;
+    out[128] = (w2.z - w1.z) / norm1.scale;
+    out[130] = 1.0;
+  }
+  return out;
+}
+
+export function predictPose(model, detectedHands) {
+  const features = extractFeatureVector(detectedHands);
+  if (!features) return null;
   return tf.tidy(() => {
-    const input = tf.tensor2d([features], [1, 63]);
+    const input = tf.tensor2d([features], [1, FEATURE_DIM]);
     const probs = model.predict(input).dataSync();
     return CLASSES.map((name, i) => ({ className: name, probability: probs[i] }))
       .sort((a, b) => b.probability - a.probability);

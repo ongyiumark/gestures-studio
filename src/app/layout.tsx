@@ -3,7 +3,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   metadataBase: new URL(
-    process.env.NEXT_PUBLIC_APP_URL || "https://ongyiumark.com"
+    process.env.NEXT_PUBLIC_APP_URL || "https://handpose.ongyiumark.com"
   ),
   title: "Hand Pose Studio — 3D Dataset Builder & In-Browser ML",
   description:

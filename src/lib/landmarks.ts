@@ -99,11 +99,8 @@ export function drawHandsOnCanvas(
     const pts = hand.landmarks;
     if (!pts || pts.length < 21) return;
 
-    const primaryColor =
-      accentColor ||
-      (hand.handedness === "Right" ? "#38bdf8" : "#fb923c");
-    const jointColor =
-      hand.handedness === "Right" ? "#ea580c" : "#f59e0b";
+    const primaryColor = accentColor || "#38bdf8";
+    const jointColor = "#f59e0b";
 
     // Draw skeleton connections
     ctx.save();
@@ -189,21 +186,22 @@ export function drawHandsOnCanvas(
 }
 
 /**
- * Extracts a 63-dimensional translation- and scale-invariant feature vector
- * from the primary detected hand's 21 3D landmarks.
- *
- * Step 1: Subtract wrist (landmark 0) coordinates -> translation invariance.
- * Step 2: Divide by max Euclidean distance from wrist -> scale invariance.
- * Step 3: Flatten 21 * (dx, dy, dz) = 63 features.
+ * Total feature dimension for classification.
+ * - 63 features: Hand 1 (21 points * 3, wrist-centered & normalized)
+ * - 63 features: Hand 2 (21 points * 3, wrist-centered & normalized; 0 if absent)
+ * - 3 features: Inter-hand relative wrist offset (dx, dy, dz) / scale1 (0 if absent)
+ * - 2 features: Hand presence flags [hand1_present (1.0), hand2_present (1.0 or 0.0)]
+ * Total: 131 features. Supports both 1-handed and 2-handed gestures seamlessly.
  */
-export function extractFeatureVector(hands: DetectedHand[]): number[] | null {
-  if (!hands || hands.length === 0) return null;
-  const primary = hands[0];
-  if (!primary.landmarks || primary.landmarks.length < 21) return null;
+export const FEATURE_VECTOR_SIZE = 131;
 
-  const pts = primary.landmarks;
+/**
+ * Normalizes 21 3D landmarks for a single hand:
+ * 1. Subtract wrist coordinates (landmark 0) -> translation invariance.
+ * 2. Divide by max Euclidean distance from wrist -> scale invariance.
+ */
+function normalizeSingleHand(pts: Point3D[]): { features: number[]; scale: number } {
   const wrist = pts[0];
-
   const centered: Point3D[] = pts.map((p) => ({
     x: p.x - wrist.x,
     y: p.y - wrist.y,
@@ -217,17 +215,86 @@ export function extractFeatureVector(hands: DetectedHand[]): number[] | null {
   }
 
   const scale = maxDist > 1e-6 ? maxDist : 1;
-
   const features: number[] = [];
   for (const p of centered) {
     features.push(p.x / scale, p.y / scale, p.z / scale);
   }
 
-  return features;
+  return { features, scale };
 }
 
 /**
- * Creates a slightly perturbed copy of a 63-D feature vector (jitter + minor 2D rotation)
+ * Sorts detected hands consistently:
+ * If both Left and Right are present, Left comes first, Right second.
+ * Otherwise, the leftmost hand on screen comes first.
+ */
+export function sortDetectedHands(hands: DetectedHand[]): DetectedHand[] {
+  if (hands.length <= 1) return hands;
+  const left = hands.find((h) => h.handedness === "Left");
+  const right = hands.find((h) => h.handedness === "Right");
+  if (left && right) {
+    return [left, right];
+  }
+  return [...hands].sort(
+    (a, b) => (a.landmarks[0]?.x ?? 0) - (b.landmarks[0]?.x ?? 0)
+  );
+}
+
+/**
+ * Extracts a 131-dimensional translation- and scale-invariant feature vector
+ * that supports BOTH single-handed and two-handed poses:
+ *
+ * - Features 0..62: Hand 1 (21 points * 3 = 63, wrist-centered & normalized)
+ * - Features 63..125: Hand 2 (21 points * 3 = 63, wrist-centered & normalized; 0 if absent)
+ * - Features 126..128: Inter-hand relative wrist offset (dx, dy, dz) / scale1 (0 if absent)
+ * - Features 129..130: Hand presence flags [hand1_present (1.0), hand2_present (1.0 or 0.0)]
+ */
+export function extractFeatureVector(hands: DetectedHand[]): number[] | null {
+  if (!hands || hands.length === 0) return null;
+
+  const validHands = hands.filter((h) => h.landmarks && h.landmarks.length >= 21);
+  if (validHands.length === 0) return null;
+
+  const sorted = sortDetectedHands(validHands);
+  const hand1 = sorted[0];
+  const hand2 = sorted.length > 1 ? sorted[1] : null;
+
+  const norm1 = normalizeSingleHand(hand1.landmarks);
+  const out = new Array<number>(FEATURE_VECTOR_SIZE).fill(0);
+
+  // Hand 1 features (0..62)
+  for (let i = 0; i < 63; i++) {
+    out[i] = norm1.features[i];
+  }
+
+  // Hand 1 presence flag
+  out[129] = 1.0;
+
+  if (hand2) {
+    const norm2 = normalizeSingleHand(hand2.landmarks);
+    // Hand 2 features (63..125)
+    for (let i = 0; i < 63; i++) {
+      out[63 + i] = norm2.features[i];
+    }
+
+    // Relative inter-hand wrist offset (126..128), normalized by Hand 1's scale
+    const w1 = hand1.landmarks[0];
+    const w2 = hand2.landmarks[0];
+    const refScale = norm1.scale > 1e-6 ? norm1.scale : 1;
+
+    out[126] = (w2.x - w1.x) / refScale;
+    out[127] = (w2.y - w1.y) / refScale;
+    out[128] = (w2.z - w1.z) / refScale;
+
+    // Hand 2 presence flag
+    out[130] = 1.0;
+  }
+
+  return out;
+}
+
+/**
+ * Creates a slightly perturbed copy of a 131-D feature vector (jitter + minor 2D rotation)
  * to improve classifier generalization on small user-collected datasets.
  */
 export function augmentFeatureVector(
@@ -235,24 +302,37 @@ export function augmentFeatureVector(
   noiseStd = 0.018,
   maxAngleRad = 0.14
 ): number[] {
-  const angle = (Math.random() * 2 - 1) * maxAngleRad;
-  const cosA = Math.cos(angle);
-  const sinA = Math.sin(angle);
+  const out = [...features];
 
-  const out: number[] = new Array(features.length);
-  for (let i = 0; i < features.length; i += 3) {
-    const x = features[i];
-    const y = features[i + 1];
-    const z = features[i + 2];
+  const augmentHandBlock = (offset: number) => {
+    const angle = (Math.random() * 2 - 1) * maxAngleRad;
+    const cosA = Math.cos(angle);
+    const sinA = Math.sin(angle);
 
-    const rx = x * cosA - y * sinA + gaussianRandom() * noiseStd;
-    const ry = x * sinA + y * cosA + gaussianRandom() * noiseStd;
-    const rz = z + gaussianRandom() * noiseStd;
+    for (let i = 0; i < 63; i += 3) {
+      const x = features[offset + i];
+      const y = features[offset + i + 1];
+      const z = features[offset + i + 2];
 
-    out[i] = rx;
-    out[i + 1] = ry;
-    out[i + 2] = rz;
+      out[offset + i] = x * cosA - y * sinA + gaussianRandom() * noiseStd;
+      out[offset + i + 1] = x * sinA + y * cosA + gaussianRandom() * noiseStd;
+      out[offset + i + 2] = z + gaussianRandom() * noiseStd;
+    }
+  };
+
+  // Augment Hand 1 (indices 0..62)
+  augmentHandBlock(0);
+
+  // If Hand 2 is present (flag at index 130 is 1.0)
+  if (features[130] > 0.5) {
+    augmentHandBlock(63);
+
+    // Add slight jitter to relative inter-hand offset (indices 126..128)
+    out[126] += gaussianRandom() * (noiseStd * 1.5);
+    out[127] += gaussianRandom() * (noiseStd * 1.5);
+    out[128] += gaussianRandom() * (noiseStd * 1.5);
   }
+
   return out;
 }
 

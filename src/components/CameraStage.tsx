@@ -172,8 +172,10 @@ export default function CameraStage({
               runningMode: "VIDEO",
               numHands: maxHands,
               minHandDetectionConfidence: minConfidence,
-              minHandPresenceConfidence: minConfidence,
-              minTrackingConfidence: minConfidence,
+              // Lower presence and tracking thresholds allow MediaPipe to keep tracking both hands
+              // even when they touch, overlap, or partially occlude each other in multi-hand poses.
+              minHandPresenceConfidence: Math.max(0.18, minConfidence - 0.15),
+              minTrackingConfidence: Math.max(0.18, minConfidence - 0.15),
             });
             activeCanvas = helperCanvas;
             setActiveDelegate(candidate.delegate);
@@ -566,10 +568,10 @@ export default function CameraStage({
   return (
     <div className="flex flex-col rounded-2xl border border-ocean-700/50 bg-[#101e2e] shadow-2xl">
       {/* Stage Top Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-ocean-700/40 bg-gradient-to-r from-[#112437] to-[#152e46] px-3.5 py-2.5 sm:px-4 sm:py-3 rounded-t-2xl">
-        <div className="flex items-center gap-2 sm:gap-2.5">
+      <div className="flex items-center justify-between gap-2 border-b border-ocean-700/40 bg-gradient-to-r from-[#112437] to-[#152e46] px-3.5 py-2.5 sm:px-4 sm:py-3 rounded-t-2xl min-h-[50px]">
+        <div className="flex items-center gap-2 sm:gap-2.5 min-w-0 flex-1">
           <span
-            className={`flex h-2.5 w-2.5 rounded-full ${
+            className={`flex h-2.5 w-2.5 shrink-0 rounded-full ${
               !cameraOn
                 ? "bg-slate-600"
                 : handDetected
@@ -577,19 +579,19 @@ export default function CameraStage({
                 : "bg-amber-400"
             }`}
           />
-          <span className="text-xs font-semibold text-slate-100">
+          <span className="text-xs font-semibold text-slate-100 truncate">
             {!cameraOn
               ? "Camera Paused"
               : handDetected
-              ? `${liveHands.length} Hand${liveHands.length > 1 ? "s" : ""} Tracked (${liveHands
-                  .map((h) => `${h.handedness} ${(h.score * 100).toFixed(0)}%`)
+              ? `${liveHands.length === 1 ? "1 Hand" : `${liveHands.length} Hands`} Tracked (${liveHands
+                  .map((h) => `${h.handedness[0]}: ${(h.score * 100).toFixed(0)}%`)
                   .join(", ")})`
-              : "Show your hand to the camera"}
+              : "Show hand(s) to the camera"}
           </span>
         </div>
 
         {/* Stage Quick Toggles */}
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5 shrink-0">
           <button
             onClick={() => setMirrored((m) => !m)}
             title="Mirror Video Feed"
@@ -974,17 +976,17 @@ export default function CameraStage({
 
         {/* Live Real-Time Prediction HUD Overlay */}
         {classifierActive && livePrediction && handDetected && (
-          <div className="pointer-events-none absolute bottom-3 left-3 right-3 flex flex-col gap-2 rounded-xl border border-ocean-500/50 bg-[#0b1a2b]/95 p-3 shadow-2xl backdrop-blur-md sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center gap-3">
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-ocean-500/20 text-sky-300">
-                <Sparkles className="h-5 w-5" />
+          <div className="pointer-events-none absolute bottom-3 left-3 right-3 flex flex-col gap-2 rounded-xl border border-ocean-400/30 bg-[#091726]/60 p-2.5 sm:p-3 shadow-2xl backdrop-blur-md sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-2.5 sm:gap-3">
+              <div className="flex h-8 w-8 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-lg bg-ocean-500/25 text-sky-300">
+                <Sparkles className="h-4 w-4 sm:h-5 sm:w-5" />
               </div>
               <div>
-                <div className="text-[10px] font-bold uppercase tracking-wider text-sky-300">
+                <div className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-sky-300/90">
                   Live Prediction
                 </div>
                 <div className="flex items-baseline gap-2">
-                  <span className="text-lg font-extrabold text-white">
+                  <span className="text-base sm:text-lg font-extrabold text-white drop-shadow-sm">
                     {livePrediction.className}
                   </span>
                   <span className="font-mono text-xs font-bold text-emerald-400">
@@ -1000,10 +1002,10 @@ export default function CameraStage({
                   key={item.className}
                   className="flex items-center gap-2 text-[11px]"
                 >
-                  <span className="w-20 truncate text-right font-medium text-slate-300">
+                  <span className="w-20 truncate text-right font-medium text-slate-200">
                     {item.className}
                   </span>
-                  <div className="h-2 flex-1 overflow-hidden rounded-full bg-slate-800">
+                  <div className="h-2 flex-1 overflow-hidden rounded-full bg-slate-900/60 border border-white/5">
                     <div
                       className="h-full rounded-full transition-all duration-150"
                       style={{
@@ -1012,7 +1014,7 @@ export default function CameraStage({
                       }}
                     />
                   </div>
-                  <span className="w-9 font-mono text-[10px] text-slate-400">
+                  <span className="w-9 font-mono text-[10px] text-slate-300">
                     {(item.probability * 100).toFixed(0)}%
                   </span>
                 </div>
