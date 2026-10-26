@@ -848,8 +848,8 @@ export default function CameraStage({
           className="pointer-events-none absolute inset-0 h-full w-full object-cover"
         />
 
-        {/* Live Diagnostics HUD */}
-        <div className="absolute top-2.5 left-2.5 z-20 flex flex-col gap-1 rounded-lg border border-ocean-700/60 bg-[#081320]/85 px-2.5 py-1.5 font-mono text-[10px] text-slate-200 backdrop-blur-sm pointer-events-none">
+        {/* Live Diagnostics HUD (Top-Right) */}
+        <div className="absolute top-2.5 right-2.5 z-20 flex flex-col gap-1 rounded-lg border border-ocean-700/60 bg-[#081320]/85 px-2.5 py-1.5 font-mono text-[10px] text-slate-200 backdrop-blur-sm pointer-events-none">
           <div className="flex items-center gap-1.5">
             <span
               className={`h-2 w-2 rounded-full ${
@@ -920,11 +920,10 @@ export default function CameraStage({
 
         {/* Burst Progress Pill */}
         {isBursting && (
-          <div className="absolute top-3 left-1/2 -translate-x-1/2 flex items-center gap-2.5 rounded-full border border-amber-500/50 bg-slate-950/90 px-4 py-1.5 text-xs font-semibold text-amber-300 shadow-lg">
+          <div className="absolute top-14 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2 rounded-full border border-amber-500/50 bg-slate-950/95 px-3.5 py-1.5 text-xs font-semibold text-amber-300 shadow-xl backdrop-blur-sm pointer-events-none whitespace-nowrap">
             <span className="h-2 w-2 animate-ping rounded-full bg-amber-400" />
             <span>
-              Auto-Burst Recording ({burstCount} / {burstTarget}) — Hold pose in
-              frame
+              Auto-Burst ({burstCount} / {burstTarget}) — Hold pose
             </span>
           </div>
         )}
@@ -1006,7 +1005,7 @@ export default function CameraStage({
 
         {/* Live Real-Time Prediction HUD Overlay */}
         {classifierActive && livePrediction && handDetected && (
-          <div className="pointer-events-none absolute bottom-2.5 left-2.5 sm:bottom-3 sm:left-3 max-w-[calc(100%-1.25rem)] sm:max-w-[240px] rounded-xl border border-ocean-400/30 bg-[#081524]/85 px-2.5 py-1.5 sm:px-3 sm:py-2 shadow-xl backdrop-blur-md">
+          <div className="pointer-events-none absolute bottom-2.5 left-2.5 sm:bottom-3 sm:left-3 w-[230px] sm:w-[250px] max-w-[calc(100%-1.25rem)] rounded-xl border border-ocean-400/30 bg-[#081524]/90 px-2.5 py-1.5 sm:px-3 sm:py-2 shadow-xl backdrop-blur-md">
             <div className="flex items-center justify-between gap-2.5">
               <div className="flex items-center gap-1.5 min-w-0">
                 <Sparkles className="h-3.5 w-3.5 text-gold-300 shrink-0" />
@@ -1030,7 +1029,7 @@ export default function CameraStage({
                     <span className="w-14 truncate text-right text-slate-300">
                       {item.className}
                     </span>
-                    <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-slate-900/80 border border-white/5">
+                    <div className="h-1.5 min-w-[60px] flex-1 overflow-hidden rounded-full bg-slate-900/80 border border-white/5">
                       <div
                         className="h-full rounded-full transition-all duration-150"
                         style={{
