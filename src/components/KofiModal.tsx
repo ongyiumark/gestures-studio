@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
-import { Coffee, ExternalLink, Loader2, X } from "lucide-react";
+import { Coffee, ExternalLink, Loader2, Moon, Sun, X } from "lucide-react";
 
 interface KofiModalProps {
   isOpen: boolean;
@@ -15,6 +15,7 @@ export default function KofiModal({
   username = "ongyiumark",
 }: KofiModalProps) {
   const [isLoading, setIsLoading] = useState(true);
+  const [isDarkMode, setIsDarkMode] = useState(true);
   const modalRef = useRef<HTMLDivElement | null>(null);
   const triggerElementRef = useRef<HTMLElement | null>(null);
 
@@ -77,7 +78,8 @@ export default function KofiModal({
 
   if (!isOpen) return null;
 
-  const kofiEmbedUrl = `https://ko-fi.com/${username}/?hidefeed=true&widget=true&embed=true&preview=true`;
+  // Clean iframe embed without preview wrappers or awkward letterboxing
+  const kofiEmbedUrl = `https://ko-fi.com/${username}/?hidefeed=true&widget=true&embed=true`;
   const kofiDirectUrl = `https://ko-fi.com/${username}`;
 
   return (
@@ -91,65 +93,110 @@ export default function KofiModal({
       <div
         ref={modalRef}
         onClick={(e) => e.stopPropagation()}
-        className="relative flex w-full max-w-[460px] flex-col overflow-hidden rounded-2xl border border-ocean-700/70 bg-[#0c1a29] shadow-2xl shadow-black/60 max-h-[92vh]"
+        className="relative flex w-full max-w-[342px] flex-col overflow-hidden rounded-2xl border border-ocean-600/70 bg-[#0c1a29] shadow-2xl shadow-black/80 max-h-[94vh]"
       >
-        {/* Header Bar */}
-        <div className="flex items-center justify-between border-b border-ocean-800/80 bg-gradient-to-r from-[#112437] to-[#0c1a29] px-4 py-3 sm:px-5">
-          <div className="flex items-center gap-2.5">
-            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-[#FF5E5B]/20 border border-[#FF5E5B]/40 text-[#FF5E5B]">
-              <Coffee className="h-4 w-4" />
+        {/* Header Bar: Perfectly aligned with site's ocean gradient & typography */}
+        <div className="flex items-center justify-between border-b border-ocean-700/60 bg-gradient-to-r from-[#173857] via-[#286398] to-[#193d60] px-3.5 py-2.5 shadow-sm">
+          <div className="flex items-center gap-2">
+            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-gold-200/20 border border-gold-300/40 text-gold-200 shadow-sm">
+              <Coffee className="h-3.5 w-3.5 text-[#FFE79C]" />
             </div>
             <div>
               <h2
                 id="kofi-modal-title"
-                className="text-sm font-bold text-white tracking-tight"
+                className="text-xs font-bold text-white tracking-tight drop-shadow-[1px_1px_2px_#FF8A55]"
               >
-                Support Hand Pose Studio
+                Support on Ko-fi
               </h2>
-              <p className="text-[11px] text-sky-200/75">
-                Support via Ko-fi &bull; @{username}
+              <p className="text-[10px] font-medium text-[#FFE79C]/90">
+                @{username}
               </p>
             </div>
           </div>
 
           <div className="flex items-center gap-1.5">
+            {/* Theme Toggle (Dark to match studio, Light for original) */}
+            <button
+              type="button"
+              onClick={() => setIsDarkMode((prev) => !prev)}
+              title={
+                isDarkMode
+                  ? "Switch to original light widget"
+                  : "Switch to dark studio theme"
+              }
+              aria-label="Toggle widget theme"
+              className="flex items-center gap-1 rounded-lg border border-ocean-600/70 bg-[#0e2135]/80 px-2 py-1 text-[11px] font-medium text-sky-200 transition hover:bg-[#163554] hover:text-white"
+            >
+              {isDarkMode ? (
+                <>
+                  <Moon className="h-3 w-3 text-gold-200" />
+                  <span className="text-[10px]">Dark</span>
+                </>
+              ) : (
+                <>
+                  <Sun className="h-3 w-3 text-amber-300" />
+                  <span className="text-[10px]">Light</span>
+                </>
+              )}
+            </button>
+
+            {/* Direct External Link */}
             <a
               href={kofiDirectUrl}
               target="_blank"
               rel="noopener noreferrer"
-              title="Open profile on ko-fi.com in a new tab"
-              className="flex h-7 w-7 items-center justify-center rounded-lg border border-ocean-700/60 bg-[#0e2135]/80 text-sky-200/80 transition hover:bg-[#163554] hover:text-white"
+              title="Open full page on ko-fi.com in a new tab"
+              className="flex h-7 w-7 items-center justify-center rounded-lg border border-ocean-600/70 bg-[#0e2135]/80 text-sky-200 transition hover:bg-[#163554] hover:text-white"
             >
               <ExternalLink className="h-3.5 w-3.5" />
             </a>
+
+            {/* Close Modal */}
             <button
               onClick={onClose}
               title="Close"
               aria-label="Close modal"
-              className="flex h-7 w-7 items-center justify-center rounded-lg border border-ocean-700/60 bg-[#0e2135]/80 text-slate-400 transition hover:bg-rose-950/60 hover:text-rose-200 hover:border-rose-700/60"
+              className="flex h-7 w-7 items-center justify-center rounded-lg border border-ocean-600/70 bg-[#0e2135]/80 text-slate-300 transition hover:bg-rose-950/70 hover:text-rose-200 hover:border-rose-600/60"
             >
-              <X className="h-4 w-4" />
+              <X className="h-3.5 w-3.5" />
             </button>
           </div>
         </div>
 
-        {/* Embedded Ko-fi Widget Iframe with Loading State */}
-        <div className="relative flex-1 min-h-[580px] sm:min-h-[640px] bg-[#0c1a29]">
+        {/* Embedded Ko-fi Widget Container: Sized precisely to 342px to eliminate side gutters & top gaps */}
+        <div
+          className={`relative flex-1 overflow-hidden transition-colors duration-200 ${
+            isDarkMode ? "bg-[#0c1a29]" : "bg-[#f5f7f9]"
+          }`}
+          style={{ height: "660px" }}
+        >
           {isLoading && (
-            <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-2.5 bg-[#0c1a29]">
-              <Loader2 className="h-7 w-7 animate-spin text-[#FF5E5B]" />
-              <span className="text-xs font-medium text-sky-200/80">
+            <div
+              className={`absolute inset-0 z-10 flex flex-col items-center justify-center gap-2.5 ${
+                isDarkMode ? "bg-[#0c1a29]" : "bg-[#f5f7f9]"
+              }`}
+            >
+              <Loader2 className="h-7 w-7 animate-spin text-gold-300" />
+              <span className="text-xs font-medium text-sky-200/90">
                 Loading Ko-fi widget…
               </span>
             </div>
           )}
+
           <iframe
             id="kofiframe"
             src={kofiEmbedUrl}
             onLoad={() => setIsLoading(false)}
             title="Support on Ko-fi"
-            className="w-full h-full min-h-[580px] sm:min-h-[640px] border-none bg-transparent"
             allow="payment"
+            className="w-full border-none transition-all duration-300"
+            style={{
+              height: "670px",
+              marginTop: "-8px", // Clean flush alignment: trims top margin so the blue polygon banner sits flush with the header
+              filter: isDarkMode
+                ? "invert(0.9) hue-rotate(185deg) contrast(1.08) brightness(0.96)"
+                : "none",
+            }}
           />
         </div>
       </div>
