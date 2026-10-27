@@ -8,6 +8,7 @@ import ClassManager from "@/components/ClassManager";
 import TrainerPanel from "@/components/TrainerPanel";
 import DatasetHubModal from "@/components/DatasetHubModal";
 import TutorialModal from "@/components/TutorialModal";
+import KofiModal from "@/components/KofiModal";
 import {
   CapturedSample,
   DetectedHand,
@@ -93,6 +94,7 @@ export default function HandPoseStudioPage() {
   // Modals & Help
   const [hubOpen, setHubOpen] = useState(false);
   const [tutorialOpen, setTutorialOpen] = useState(false);
+  const [kofiOpen, setKofiOpen] = useState(false);
   const [showHelp, setShowHelp] = useState(true);
   const [hydrated, setHydrated] = useState(false);
 
@@ -545,6 +547,7 @@ export default function HandPoseStudioPage() {
         onLoadDemoData={handleLoadDemoDataset}
         onOpenTutorial={() => setTutorialOpen(true)}
         onToggleHelp={handleToggleQuickGuide}
+        onOpenKofi={() => setKofiOpen(true)}
       />
 
       {/* Quick Studio Guide Banner (Strictly stacked vertically with clear step badges) */}
@@ -794,6 +797,13 @@ export default function HandPoseStudioPage() {
           setActiveClassName(newClasses[0]?.name || null);
         }}
         onRestoreModel={handleRestoreModel}
+      />
+
+      {/* Ko-fi Support & Donation Widget Modal */}
+      <KofiModal
+        isOpen={kofiOpen}
+        onClose={() => setKofiOpen(false)}
+        username="ongyiumark"
       />
     </div>
   );

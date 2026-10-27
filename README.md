@@ -1,5 +1,8 @@
 # Hand Pose Studio 2.0
 
+[![Ko-fi](https://img.shields.io/badge/Ko--fi-F16061?style=flat&logo=ko-fi&logoColor=white)](https://ko-fi.com/ongyiumark)
+[![GitHub Sponsor](https://img.shields.io/badge/Sponsor-EA4AAA?style=flat&logo=github-sponsors&logoColor=white)](https://github.com/sponsors/ongyiumark)
+
 An interactive 3D hand-pose dataset builder, in-browser neural network trainer, and real-time hand pose classification studio built with **Next.js (App Router)**, **TypeScript**, **Tailwind CSS**, **Google MediaPipe HandLandmarker**, and **TensorFlow.js**.
 
 ## Key Features
@@ -37,6 +40,13 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000) in your browser.
 
+## Support
+
+If you find Hand Pose Studio useful, consider supporting its development:
+
+- [Support on Ko-fi](https://ko-fi.com/ongyiumark)
+- [Sponsor on GitHub](https://github.com/sponsors/ongyiumark)
+
 ## License
 
-This project is licensed under the [MIT License](file:///Users/ongyiumark/Projects/handpose-trainer/LICENSE).
+This project is licensed under the [MIT License](LICENSE).
