@@ -181,30 +181,36 @@ export function generateDemoDataset(samplesPerClass = 8): {
     const color = getClassColor(classIdx);
 
     for (let i = 0; i < samplesPerClass; i++) {
+      const isRight = i % 2 === 0;
+      const handedness: "Right" | "Left" = isRight ? "Right" : "Left";
       const offsetX = (Math.random() - 0.5) * 0.08;
       const offsetY = (Math.random() - 0.5) * 0.08;
       const scale = 0.92 + Math.random() * 0.16;
 
-      const landmarks: Point3D[] = basePoints.map((pt) => ({
-        x: Math.min(
-          0.95,
-          Math.max(
-            0.05,
-            0.5 + (pt.x - 0.5) * scale + offsetX + (Math.random() - 0.5) * 0.015
-          )
-        ),
-        y: Math.min(
-          0.95,
-          Math.max(
-            0.05,
-            0.5 + (pt.y - 0.5) * scale + offsetY + (Math.random() - 0.5) * 0.015
-          )
-        ),
-        z: pt.z * scale + (Math.random() - 0.5) * 0.01,
-      }));
+      // Base templates define Left-hand geometry; mirror x across center (1 - x) for Right hands
+      const landmarks: Point3D[] = basePoints.map((pt) => {
+        const rawX = isRight ? 1 - pt.x : pt.x;
+        return {
+          x: Math.min(
+            0.95,
+            Math.max(
+              0.05,
+              0.5 + (rawX - 0.5) * scale + offsetX + (Math.random() - 0.5) * 0.015
+            )
+          ),
+          y: Math.min(
+            0.95,
+            Math.max(
+              0.05,
+              0.5 + (pt.y - 0.5) * scale + offsetY + (Math.random() - 0.5) * 0.015
+            )
+          ),
+          z: pt.z * scale + (Math.random() - 0.5) * 0.01,
+        };
+      });
 
       const hand: DetectedHand = {
-        handedness: i % 2 === 0 ? "Right" : "Left",
+        handedness,
         score: Number((0.92 + Math.random() * 0.07).toFixed(2)),
         landmarks,
         worldLandmarks: landmarks.map((p) => ({

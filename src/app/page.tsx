@@ -651,7 +651,8 @@ export default function HandPoseStudioPage() {
             <div className="flex flex-1 items-center gap-1.5">
               <button
                 onClick={() => setActiveStepTab("collect")}
-                className={`flex flex-1 items-center justify-center gap-1.5 sm:gap-2 rounded-xl px-2.5 sm:px-3.5 py-2 text-[11px] sm:text-xs font-bold transition ${
+                title={`Step 1: Collect (${samples.length} photos captured)`}
+                className={`flex flex-1 items-center justify-center gap-1.5 sm:gap-2 rounded-xl px-2 sm:px-3.5 py-2 text-[11px] sm:text-xs font-bold transition min-w-0 ${
                   activeStepTab === "collect"
                     ? "bg-gradient-to-r from-terracotta-500 to-terracotta-600 text-white shadow-md shadow-terracotta-950/30"
                     : "text-slate-300 hover:bg-[#16304d]"
@@ -663,19 +664,24 @@ export default function HandPoseStudioPage() {
 
               <button
                 onClick={() => setActiveStepTab("train")}
-                className={`flex flex-1 items-center justify-center gap-1.5 sm:gap-2 rounded-xl px-2.5 sm:px-3.5 py-2 text-[11px] sm:text-xs font-bold transition ${
+                title={`Step 2: Train & Test${
+                  trainedModelRecord
+                    ? ` (${trainedModelRecord.finalAccuracy}% Accuracy)`
+                    : ""
+                }`}
+                className={`flex flex-1 items-center justify-center gap-1 sm:gap-2 rounded-xl px-2 sm:px-3.5 py-2 text-[11px] sm:text-xs font-bold transition min-w-0 ${
                   activeStepTab === "train"
                     ? "bg-ocean-600 text-white shadow-md shadow-ocean-950/30"
                     : "text-slate-300 hover:bg-[#16304d]"
                 }`}
               >
                 <BrainCircuit className="h-4 w-4 shrink-0" />
-                <span className="truncate">
-                  Step 2: Train &amp; Test
-                  {trainedModelRecord
-                    ? ` (${trainedModelRecord.finalAccuracy}%)`
-                    : ""}
-                </span>
+                <span className="truncate">Step 2: Train</span>
+                {trainedModelRecord && (
+                  <span className="rounded-full bg-emerald-500/20 px-1.5 py-0.5 text-[10px] font-mono text-emerald-300 border border-emerald-500/30 shrink-0">
+                    {trainedModelRecord.finalAccuracy}%
+                  </span>
+                )}
               </button>
             </div>
 

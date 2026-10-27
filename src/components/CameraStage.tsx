@@ -53,6 +53,7 @@ export default function CameraStage({
   const landmarkerRef = useRef<any>(null);
   const rafRef = useRef<number | null>(null);
   const lastInferenceTimeRef = useRef<number>(0);
+  const lastSubmittedTimestampRef = useRef<number>(0);
   const lastStateUpdateRef = useRef<number>(0);
   const fpsTimestampsRef = useRef<number[]>([]);
   const latestHandsRef = useRef<DetectedHand[]>([]);
@@ -63,6 +64,7 @@ export default function CameraStage({
 
   const [cameraOn, setCameraOn] = useState<boolean>(false);
   const [hasStartedOnce, setHasStartedOnce] = useState<boolean>(false);
+  const [isPortraitStream, setIsPortraitStream] = useState<boolean>(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [mirrored, setMirrored] = useState<boolean>(true);
   const [showSkeleton, setShowSkeleton] = useState<boolean>(true);
@@ -356,14 +358,20 @@ export default function CameraStage({
         }
 
         const nowMs = performance.now();
-        // Run inference at ~30 FPS with monotonically increasing timestamp
+        // Run inference at ~30 FPS with strictly monotonically increasing timestamp
         if (nowMs - lastInferenceTimeRef.current >= 30) {
           lastInferenceTimeRef.current = nowMs;
 
           try {
             let result;
+            const primaryTimestamp = Math.max(
+              Math.round(nowMs),
+              lastSubmittedTimestampRef.current + 1
+            );
+            lastSubmittedTimestampRef.current = primaryTimestamp;
+
             try {
-              result = landmarker.detectForVideo(video, Math.round(nowMs));
+              result = landmarker.detectForVideo(video, primaryTimestamp);
             } catch {
               if (!videoFrameCanvasRef.current) {
                 videoFrameCanvasRef.current = document.createElement("canvas");
@@ -376,7 +384,9 @@ export default function CameraStage({
               const vfCtx = vfc.getContext("2d");
               if (vfCtx) {
                 vfCtx.drawImage(video, 0, 0, vw, vh);
-                result = landmarker.detectForVideo(vfc, Math.round(nowMs));
+                const retryTimestamp = lastSubmittedTimestampRef.current + 1;
+                lastSubmittedTimestampRef.current = retryTimestamp;
+                result = landmarker.detectForVideo(vfc, retryTimestamp);
               }
             }
 
@@ -456,10 +466,10 @@ export default function CameraStage({
       } else if (canvas) {
         if (cameraOn && video) {
           if (video.paused) {
-            setVideoPaused(true);
-            video.play().catch(() => {});
+            setVideoPaused((prev) => (prev ? prev : true));
           } else if (video.readyState < 2) {
-            setVideoStatus(`Connecting (ready: ${video.readyState})`);
+            const nextStatus = `Connecting (ready: ${video.readyState})`;
+            setVideoStatus((prev) => (prev === nextStatus ? prev : nextStatus));
           }
         }
         const ctx = canvas.getContext("2d");
@@ -750,7 +760,7 @@ export default function CameraStage({
                 <button
                   type="button"
                   onClick={() => setShowConfidenceTooltip((v) => !v)}
-                  className="rounded-full p-1 text-sky-400 hover:text-gold-200 focus:outline-none transition"
+                  className="rounded-full p-1 text-sky-400 hover:text-gold-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-ocean-400 transition"
                   aria-label="Explain Min Confidence"
                   aria-expanded={showConfidenceTooltip}
                   aria-controls="confidence-popover-content"
@@ -758,13 +768,13 @@ export default function CameraStage({
                   <HelpCircle className="h-4 w-4" />
                 </button>
 
-                {/* Accessible Info Popover Tooltip (Centered on button, never clipped) */}
+                {/* Accessible Info Popover Tooltip (Right-aligned on mobile to prevent overflow) */}
                 {showConfidenceTooltip && (
                   <div
                     id="confidence-popover-content"
                     role="region"
                     aria-label="Min Confidence Explanation"
-                    className="absolute top-full left-1/2 -translate-x-1/2 z-50 pt-2 w-72 sm:w-80 max-w-[calc(100vw-40px)] pointer-events-auto"
+                    className="absolute top-full right-0 sm:left-1/2 sm:-translate-x-1/2 z-50 pt-2 w-72 sm:w-80 max-w-[calc(100vw-32px)] pointer-events-auto"
                   >
                     <div className="rounded-xl border border-ocean-600/70 bg-[#0e2135] p-3.5 text-xs text-slate-200 shadow-2xl backdrop-blur-md">
                       <div className="flex items-center justify-between pb-1.5 border-b border-ocean-700/50 mb-2">
@@ -855,7 +865,11 @@ export default function CameraStage({
       )}
 
       {/* Video & Canvas Stage */}
-      <div className="relative aspect-[4/3] w-full bg-[#08111a] flex items-center justify-center overflow-hidden">
+      <div
+        className={`relative w-full bg-[#08111a] flex items-center justify-center overflow-hidden transition-[aspect-ratio] ${
+          isPortraitStream ? "aspect-[3/4]" : "aspect-[4/3]"
+        }`}
+      >
         <video
           ref={videoRef}
           playsInline
@@ -863,14 +877,10 @@ export default function CameraStage({
           autoPlay
           onLoadedMetadata={() => {
             if (videoRef.current) {
-              videoRef.current.muted = true;
-              videoRef.current.play().catch(() => {});
-            }
-          }}
-          onCanPlay={() => {
-            if (videoRef.current) {
-              videoRef.current.muted = true;
-              videoRef.current.play().catch(() => {});
+              const { videoWidth, videoHeight } = videoRef.current;
+              if (videoWidth && videoHeight) {
+                setIsPortraitStream(videoHeight > videoWidth);
+              }
             }
           }}
           className={`h-full w-full object-cover transition-opacity duration-200 ${
@@ -884,7 +894,7 @@ export default function CameraStage({
         />
 
         {/* Live Diagnostics HUD (Top-Right) */}
-        <div className="absolute top-2.5 right-2.5 z-20 flex flex-col gap-1 rounded-lg border border-ocean-700/60 bg-[#081320]/85 px-2.5 py-1.5 font-mono text-[10px] text-slate-200 backdrop-blur-sm pointer-events-none">
+        <div className="absolute top-2.5 right-2.5 z-20 flex flex-col gap-0.5 sm:gap-1 rounded-lg border border-ocean-700/60 bg-[#081320]/85 px-2 py-1 sm:px-2.5 sm:py-1.5 font-mono text-[9px] sm:text-[10px] text-slate-200 backdrop-blur-sm pointer-events-none max-w-[150px] sm:max-w-none">
           <div className="flex items-center gap-1.5">
             <span
               className={`h-2 w-2 rounded-full ${
@@ -895,7 +905,7 @@ export default function CameraStage({
                   : "bg-amber-400 animate-pulse"
               }`}
             />
-            <span>Cam: {videoStatus}</span>
+            <span className="truncate">Cam: {videoStatus}</span>
           </div>
           <div className="flex items-center gap-1.5">
             <span
@@ -905,13 +915,13 @@ export default function CameraStage({
                   : "bg-amber-400"
               }`}
             />
-            <span>
+            <span className="truncate">
               {activeDelegate} • {fpsVal} FPS • {liveHands.length}{" "}
               {liveHands.length === 1 ? "hand" : "hands"}
             </span>
           </div>
           {lastDetectError && (
-            <div className="text-rose-400 font-sans text-[9px] max-w-[200px] truncate">
+            <div className="text-rose-400 font-sans text-[9px] max-w-[140px] truncate">
               {lastDetectError}
             </div>
           )}
@@ -1060,12 +1070,12 @@ export default function CameraStage({
 
         {/* Active Recording Class Badge Overlay (Top-Left) */}
         {activeClass && cameraOn && (
-          <div className="pointer-events-none absolute top-3 left-3 flex items-center gap-2 rounded-lg border border-ocean-700/70 bg-[#0a1624]/90 px-3 py-1.5 backdrop-blur-md">
+          <div className="pointer-events-none absolute top-2.5 left-2.5 sm:top-3 sm:left-3 flex items-center gap-1.5 sm:gap-2 rounded-lg border border-ocean-700/70 bg-[#0a1624]/90 px-2 py-1 sm:px-3 sm:py-1.5 backdrop-blur-md max-w-[140px] sm:max-w-none">
             <span
-              className="h-2.5 w-2.5 rounded-full"
+              className="h-2 w-2 sm:h-2.5 sm:w-2.5 shrink-0 rounded-full"
               style={{ backgroundColor: activeClass.color }}
             />
-            <span className="text-xs text-slate-300">
+            <span className="text-[11px] sm:text-xs text-slate-300 truncate">
               Target:{" "}
               <strong className="font-semibold text-white">
                 {activeClass.name}
@@ -1076,7 +1086,7 @@ export default function CameraStage({
 
         {/* Live Real-Time Prediction HUD Overlay */}
         {classifierActive && livePrediction && handDetected && (
-          <div className="pointer-events-none absolute bottom-2.5 left-2.5 sm:bottom-3 sm:left-3 w-[230px] sm:w-[250px] max-w-[calc(100%-1.25rem)] rounded-xl border border-ocean-400/30 bg-[#081524]/90 px-2.5 py-1.5 sm:px-3 sm:py-2 shadow-xl backdrop-blur-md">
+          <div className="pointer-events-none absolute bottom-2.5 left-2.5 sm:bottom-3 sm:left-3 w-[200px] sm:w-[250px] max-w-[calc(100%-1.25rem)] rounded-xl border border-ocean-400/30 bg-[#081524]/90 px-2.5 py-1.5 sm:px-3 sm:py-2 shadow-xl backdrop-blur-md">
             <div className="flex items-center justify-between gap-2.5">
               <div className="flex items-center gap-1.5 min-w-0">
                 <Sparkles className="h-3.5 w-3.5 text-gold-300 shrink-0" />
@@ -1133,11 +1143,11 @@ export default function CameraStage({
           </span>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+        <div className="grid grid-cols-1 min-[380px]:grid-cols-3 sm:flex sm:flex-wrap items-center gap-2 w-full sm:w-auto">
           <button
             onClick={captureNow}
             disabled={!cameraOn || !activeClass}
-            className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-terracotta-500 to-terracotta-600 px-4 py-2.5 text-xs font-bold text-white shadow-md shadow-terracotta-950/40 transition hover:from-terracotta-400 hover:to-terracotta-500 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
+            className="flex items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-terracotta-500 to-terracotta-600 px-3 sm:px-4 py-2.5 text-xs font-bold text-white shadow-md shadow-terracotta-950/40 transition hover:from-terracotta-400 hover:to-terracotta-500 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
           >
             <Camera className="h-4 w-4" />
             <span>Capture Photo</span>
@@ -1147,7 +1157,7 @@ export default function CameraStage({
             onClick={startTimerCapture}
             disabled={!cameraOn || !activeClass || countdown !== null}
             title="3-second countdown before capturing"
-            className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 rounded-xl border border-ocean-600/60 bg-[#163554]/90 px-3.5 py-2.5 text-xs font-semibold text-slate-100 transition hover:bg-[#1f456c] disabled:cursor-not-allowed disabled:opacity-40"
+            className="flex items-center justify-center gap-1.5 rounded-xl border border-ocean-600/60 bg-[#163554]/90 px-3 sm:px-3.5 py-2.5 text-xs font-semibold text-slate-100 transition hover:bg-[#1f456c] disabled:cursor-not-allowed disabled:opacity-40"
           >
             <Timer className="h-4 w-4 text-gold-300" />
             <span>3s Timer</span>
@@ -1157,7 +1167,7 @@ export default function CameraStage({
             onClick={toggleBurstCapture}
             disabled={!cameraOn || !activeClass}
             title={`Automatically capture ${burstTarget} frames while your hand is in view`}
-            className={`flex-1 sm:flex-initial flex items-center justify-center gap-1.5 rounded-xl px-3.5 py-2.5 text-xs font-semibold transition ${
+            className={`flex items-center justify-center gap-1.5 rounded-xl px-3 sm:px-3.5 py-2.5 text-xs font-semibold transition ${
               isBursting
                 ? "border border-rose-500/50 bg-rose-500/20 text-rose-300"
                 : "border border-gold-300/40 bg-gold-200/15 text-gold-100 hover:bg-gold-200/25"

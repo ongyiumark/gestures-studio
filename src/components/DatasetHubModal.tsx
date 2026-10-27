@@ -72,6 +72,7 @@ export default function DatasetHubModal({
   const [statusMsg, setStatusMsg] = useState<string | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const modalRef = useRef<HTMLDivElement | null>(null);
 
   const refreshLocalData = async () => {
     try {
@@ -94,8 +95,42 @@ export default function DatasetHubModal({
       refreshLocalData();
     }
     if (!isOpen) return;
+
+    const modal = modalRef.current;
+    if (modal) {
+      const focusables = modal.querySelectorAll<HTMLElement>(
+        'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+      );
+      if (focusables.length > 0) {
+        focusables[0].focus();
+      }
+    }
+
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") {
+        onClose();
+        return;
+      }
+      if (e.key === "Tab" && modal) {
+        const focusables = modal.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        );
+        if (focusables.length === 0) return;
+        const first = focusables[0];
+        const last = focusables[focusables.length - 1];
+
+        if (e.shiftKey) {
+          if (document.activeElement === first) {
+            e.preventDefault();
+            last.focus();
+          }
+        } else {
+          if (document.activeElement === last) {
+            e.preventDefault();
+            first.focus();
+          }
+        }
+      }
     };
     const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
@@ -241,6 +276,7 @@ export default function DatasetHubModal({
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-3 sm:p-4 backdrop-blur-sm"
     >
       <div
+        ref={modalRef}
         onClick={(e) => e.stopPropagation()}
         className="flex max-h-[88vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-ocean-700/60 bg-[#0e1d2f] shadow-2xl"
       >
@@ -302,14 +338,16 @@ export default function DatasetHubModal({
           {activeTab === "export" ? (
             <div className="flex flex-col gap-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-200 mb-1.5">
+                <label htmlFor="export-filename-prefix" className="block text-xs font-semibold text-slate-200 mb-1.5">
                   Export Filename Prefix
                 </label>
                 <input
+                  id="export-filename-prefix"
                   type="text"
                   value={datasetName}
                   onChange={(e) => setDatasetName(e.target.value)}
-                  className="w-full rounded-xl border border-ocean-700/60 bg-[#081320] px-3 py-2 text-xs text-white focus:border-ocean-500 focus:outline-none"
+                  aria-label="Export Filename Prefix"
+                  className="w-full rounded-xl border border-ocean-700/60 bg-[#081320] px-3 py-2 text-xs text-white focus:border-ocean-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-ocean-400"
                 />
               </div>
 
@@ -428,14 +466,16 @@ export default function DatasetHubModal({
                     value={datasetName}
                     onChange={(e) => setDatasetName(e.target.value)}
                     placeholder="Dataset snapshot name…"
-                    className="rounded-lg border border-ocean-700/60 bg-[#07111b] px-3 py-1.5 text-xs text-white"
+                    aria-label="Dataset snapshot name"
+                    className="rounded-lg border border-ocean-700/60 bg-[#07111b] px-3 py-1.5 text-xs text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-ocean-400"
                   />
                   <input
                     type="text"
                     value={snapshotDesc}
                     onChange={(e) => setSnapshotDesc(e.target.value)}
                     placeholder="Optional notes / description…"
-                    className="rounded-lg border border-ocean-700/60 bg-[#07111b] px-3 py-1.5 text-xs text-white"
+                    aria-label="Optional snapshot notes or description"
+                    className="rounded-lg border border-ocean-700/60 bg-[#07111b] px-3 py-1.5 text-xs text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-ocean-400"
                   />
                 </div>
                 <button

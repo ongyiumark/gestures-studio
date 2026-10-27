@@ -59,7 +59,14 @@ export function prepareTrainingDataset(
     samplesByClass.get(s.className)?.push(s);
   }
 
-  const shouldHoldout = holdoutValidation && validSamples.length >= 12;
+  // Require at least 2 distinct classes with >= 4 samples before enabling holdout validation
+  const classesWithEnoughSamples = Array.from(samplesByClass.values()).filter(
+    (arr) => arr.length >= 4
+  ).length;
+  const shouldHoldout =
+    holdoutValidation &&
+    validSamples.length >= 12 &&
+    classesWithEnoughSamples >= 2;
 
   for (const [className, classSamples] of samplesByClass.entries()) {
     const labelIdx = classToIndex.get(className);
@@ -215,11 +222,13 @@ export async function trainMLPClassifier(
 
   const history: TrainingHistoryPoint[] = [];
 
+  const distinctValClasses = new Set(prepared.valLabels || []).size;
   const hasValidationData = Boolean(
     prepared.valFeatures &&
     prepared.valFeatures.length > 0 &&
     prepared.valLabels &&
-    prepared.valLabels.length > 0
+    prepared.valLabels.length > 0 &&
+    distinctValClasses >= 2
   );
 
   let valXs: tf.Tensor2D | null = null;

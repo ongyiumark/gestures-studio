@@ -112,10 +112,13 @@ const SampleCard = React.memo(function SampleCard({
       {/* Delete Sample Button */}
       <button
         type="button"
-        onClick={() => onDelete(sample.id)}
+        onClick={(e) => {
+          e.stopPropagation();
+          onDelete(sample.id);
+        }}
         title="Delete sample"
         aria-label="Delete sample"
-        className="absolute top-1.5 right-1.5 z-10 flex h-6 w-6 items-center justify-center rounded-md bg-terracotta-700/90 text-white opacity-100 sm:opacity-0 sm:group-hover:opacity-100 focus:opacity-100 focus:outline-none focus:ring-2 focus:ring-white shadow transition hover:bg-terracotta-600 active:scale-95"
+        className="absolute top-1 right-1 z-10 flex h-7 w-7 sm:h-6 sm:w-6 items-center justify-center rounded-md bg-terracotta-700/95 text-white opacity-100 sm:opacity-0 sm:group-hover:opacity-100 focus:opacity-100 focus:outline-none focus:ring-2 focus:ring-white shadow transition hover:bg-terracotta-600 active:scale-95 touch-manipulation"
       >
         <X className="h-3.5 w-3.5" />
       </button>
@@ -137,10 +140,43 @@ function SamplePreviewModal({
   onDelete,
 }: SamplePreviewModalProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const modalRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
+    const modal = modalRef.current;
+    if (modal) {
+      const focusables = modal.querySelectorAll<HTMLElement>(
+        'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+      );
+      if (focusables.length > 0) {
+        focusables[0].focus();
+      }
+    }
+
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") {
+        onClose();
+        return;
+      }
+      if (e.key === "Tab" && modal) {
+        const focusables = modal.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        );
+        if (focusables.length === 0) return;
+        const first = focusables[0];
+        const last = focusables[focusables.length - 1];
+        if (e.shiftKey) {
+          if (document.activeElement === first) {
+            e.preventDefault();
+            last.focus();
+          }
+        } else {
+          if (document.activeElement === last) {
+            e.preventDefault();
+            first.focus();
+          }
+        }
+      }
     };
     const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
@@ -182,6 +218,7 @@ function SamplePreviewModal({
       className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 p-3 sm:p-6 backdrop-blur-sm"
     >
       <div
+        ref={modalRef}
         onClick={(e) => e.stopPropagation()}
         className="relative flex flex-col w-full max-w-2xl overflow-hidden rounded-2xl border border-ocean-600/70 bg-[#0d1c2d] shadow-2xl animate-in zoom-in-95 duration-150"
       >
@@ -391,7 +428,8 @@ function ClassManager({
             value={newClassInput}
             onChange={(e) => setNewClassInput(e.target.value)}
             placeholder="Enter new hand pose class name (e.g. Peace)…"
-            className="flex-1 rounded-xl border border-ocean-700/60 bg-[#081320] px-3 py-2 text-xs text-white placeholder-slate-400 focus:border-ocean-500 focus:outline-none"
+            aria-label="New hand pose class name"
+            className="flex-1 rounded-xl border border-ocean-700/60 bg-[#081320] px-3 py-2 text-xs text-white placeholder-slate-400 focus:border-ocean-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-ocean-400"
           />
           <button
             type="submit"
@@ -451,7 +489,8 @@ function ClassManager({
                         if (e.key === "Escape") setEditingClass(null);
                       }}
                       autoFocus
-                      className="w-full rounded border border-ocean-500 bg-[#091522] px-2 py-0.5 text-xs text-white focus:outline-none"
+                      aria-label={`Rename class ${cls.name}`}
+                      className="w-full rounded border border-ocean-500 bg-[#091522] px-2 py-0.5 text-xs text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-ocean-400"
                     />
                     <button
                       type="button"
