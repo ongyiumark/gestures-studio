@@ -312,7 +312,12 @@ export function augmentFeatureVector(
     const cosA = Math.cos(angle);
     const sinA = Math.sin(angle);
 
-    for (let i = 0; i < 63; i += 3) {
+    // Maintain wrist origin at (0, 0, 0) for translation invariance
+    out[offset] = 0;
+    out[offset + 1] = 0;
+    out[offset + 2] = 0;
+
+    for (let i = 3; i < 63; i += 3) {
       const x = features[offset + i];
       const y = features[offset + i + 1];
       const z = features[offset + i + 2];

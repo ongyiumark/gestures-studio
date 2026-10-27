@@ -232,7 +232,7 @@ export default function CameraStage({
         activeCanvasRef.current = null;
       }
     };
-  }, [onModelStatusChange, retryCount, activeDelegate]);
+  }, [onModelStatusChange, retryCount]);
 
   // Dynamically update confidence thresholds and max hands without re-instantiating WASM or reloading model
   useEffect(() => {
@@ -508,8 +508,8 @@ export default function CameraStage({
       className: activeClass.name,
       timestamp: Date.now(),
       imageDataUrl,
-      width: video.videoWidth || 640,
-      height: video.videoHeight || 480,
+      width: targetW,
+      height: targetH,
       hands: JSON.parse(JSON.stringify(hands)),
     };
 
@@ -719,19 +719,23 @@ export default function CameraStage({
           {/* Min Confidence with Interactive Tooltip Popover */}
           <div className="flex items-center gap-2">
             <div className="flex items-center gap-1.5">
-              <span className="text-slate-300">
+              <label htmlFor="stage-min-confidence" className="text-slate-300">
                 Min Confidence: {(minConfidence * 100).toFixed(0)}%
-              </span>
+              </label>
 
               {/* Tooltip trigger wrapped in relative container */}
-              <div className="relative inline-flex items-center">
+              <div
+                className="relative inline-flex items-center"
+                onMouseEnter={() => setShowConfidenceTooltip(true)}
+                onMouseLeave={() => setShowConfidenceTooltip(false)}
+              >
                 <button
                   type="button"
                   onClick={() => setShowConfidenceTooltip((v) => !v)}
-                  onMouseEnter={() => setShowConfidenceTooltip(true)}
-                  onMouseLeave={() => setShowConfidenceTooltip(false)}
                   className="rounded-full p-1 text-sky-400 hover:text-gold-200 focus:outline-none transition"
                   aria-label="Explain Min Confidence"
+                  aria-expanded={showConfidenceTooltip}
+                  aria-controls="confidence-popover-content"
                 >
                   <HelpCircle className="h-4 w-4" />
                 </button>
@@ -739,42 +743,48 @@ export default function CameraStage({
                 {/* Accessible Info Popover Tooltip (Centered on button, never clipped) */}
                 {showConfidenceTooltip && (
                   <div
-                    className="absolute top-full left-1/2 -translate-x-1/2 z-50 mt-2 w-72 sm:w-80 max-w-[calc(100vw-40px)] rounded-xl border border-ocean-600/70 bg-[#0e2135] p-3.5 text-xs text-slate-200 shadow-2xl backdrop-blur-md pointer-events-auto"
-                    onMouseEnter={() => setShowConfidenceTooltip(true)}
-                    onMouseLeave={() => setShowConfidenceTooltip(false)}
+                    id="confidence-popover-content"
+                    role="region"
+                    aria-label="Min Confidence Explanation"
+                    className="absolute top-full left-1/2 -translate-x-1/2 z-50 pt-2 w-72 sm:w-80 max-w-[calc(100vw-40px)] pointer-events-auto"
                   >
-                    <div className="flex items-center justify-between pb-1.5 border-b border-ocean-700/50 mb-2">
-                      <span className="font-bold text-white flex items-center gap-1.5">
-                        <Info className="h-3.5 w-3.5 text-gold-200" />
-                        Min Confidence ({(minConfidence * 100).toFixed(0)}%)
-                      </span>
-                      <button
-                        onClick={() => setShowConfidenceTooltip(false)}
-                        className="rounded p-0.5 text-slate-400 hover:text-white"
-                      >
-                        <X className="h-3 w-3" />
-                      </button>
-                    </div>
-                    <p className="text-[11px] leading-relaxed text-slate-300">
-                      Sets how strictly MediaPipe requires a hand match before plotting 21 3D landmarks:
-                    </p>
-                    <div className="mt-2 space-y-1.5 text-[11px]">
-                      <div className="rounded-lg bg-[#08121d] p-2 border border-ocean-800">
-                        <strong className="text-sky-300">Lower (25%–35%):</strong> Easier detection in dim light, rapid motion, or partial angles, with slight landmark jitter.
+                    <div className="rounded-xl border border-ocean-600/70 bg-[#0e2135] p-3.5 text-xs text-slate-200 shadow-2xl backdrop-blur-md">
+                      <div className="flex items-center justify-between pb-1.5 border-b border-ocean-700/50 mb-2">
+                        <span className="font-bold text-white flex items-center gap-1.5">
+                          <Info className="h-3.5 w-3.5 text-gold-200" />
+                          Min Confidence ({(minConfidence * 100).toFixed(0)}%)
+                        </span>
+                        <button
+                          onClick={() => setShowConfidenceTooltip(false)}
+                          className="rounded p-0.5 text-slate-400 hover:text-white"
+                          aria-label="Close tooltip"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
                       </div>
-                      <div className="rounded-lg bg-[#08121d] p-2 border border-ocean-800">
-                        <strong className="text-amber-300">Higher (50%–70%):</strong> Stricter detection; requires a crisp, well-lit hand, filtering out background false-positives.
+                      <p className="text-[11px] leading-relaxed text-slate-300">
+                        Sets how strictly MediaPipe requires a hand match before plotting 21 3D landmarks:
+                      </p>
+                      <div className="mt-2 space-y-1.5 text-[11px]">
+                        <div className="rounded-lg bg-[#08121d] p-2 border border-ocean-800">
+                          <strong className="text-sky-300">Lower (25%–35%):</strong> Easier detection in dim light, rapid motion, or partial angles, with slight landmark jitter.
+                        </div>
+                        <div className="rounded-lg bg-[#08121d] p-2 border border-ocean-800">
+                          <strong className="text-amber-300">Higher (50%–70%):</strong> Stricter detection; requires a crisp, well-lit hand, filtering out background false-positives.
+                        </div>
                       </div>
+                      <p className="mt-2 text-[10px] text-sky-200/80">
+                        Default <strong>35%–40%</strong> is recommended for fluid, responsive studio capture.
+                      </p>
                     </div>
-                    <p className="mt-2 text-[10px] text-sky-200/80">
-                      Default <strong>35%–40%</strong> is recommended for fluid, responsive studio capture.
-                    </p>
                   </div>
                 )}
               </div>
             </div>
 
             <input
+              id="stage-min-confidence"
+              aria-label="Minimum Hand Detection Confidence"
               type="range"
               min={0.25}
               max={0.8}
@@ -786,8 +796,12 @@ export default function CameraStage({
           </div>
 
           <div className="flex items-center gap-2">
-            <span className="text-slate-300">Burst:</span>
+            <label htmlFor="stage-burst-target" className="text-slate-300">
+              Burst:
+            </label>
             <select
+              id="stage-burst-target"
+              aria-label="Auto-burst capture photos count"
               value={burstTarget}
               onChange={(e) => setBurstTarget(Number(e.target.value))}
               className="rounded-md border border-ocean-700/60 bg-[#08111a] px-2 py-0.5 text-slate-100"

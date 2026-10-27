@@ -42,14 +42,22 @@ export function buildLandmarksCsvString(samples: CapturedSample[]): string {
 
   const rows: string[] = [headerCols.join(",")];
 
+  const sanitizeCsvField = (val: string): string => {
+    let clean = val.replace(/"/g, '""');
+    if (/^[=+@-]/i.test(clean)) {
+      clean = `'${clean}`;
+    }
+    return `"${clean}"`;
+  };
+
   for (const sample of samples) {
     if (!sample.hands || sample.hands.length === 0) continue;
     const primary = sample.hands[0];
     const normVec = extractFeatureVector(sample.hands) || new Array(FEATURE_VECTOR_SIZE).fill(0);
 
     const row: (string | number)[] = [
-      `"${sample.id}"`,
-      `"${sample.className.replace(/"/g, '""')}"`,
+      sanitizeCsvField(sample.id),
+      sanitizeCsvField(sample.className),
       sample.timestamp,
       sample.hands.length,
       primary.handedness,
@@ -214,17 +222,34 @@ export function parseImportedDatasetJson(jsonText: string): {
                 z: typeof lm.z === "number" && !isNaN(lm.z) ? lm.z : 0,
               }))
           : [];
-        return { handedness, score, landmarks };
+        const worldLandmarks = Array.isArray(h.worldLandmarks)
+          ? h.worldLandmarks
+              .filter((lm: unknown) => lm && typeof lm === "object")
+              .map((lm: Record<string, unknown>) => ({
+                x: typeof lm.x === "number" && !isNaN(lm.x) ? lm.x : 0,
+                y: typeof lm.y === "number" && !isNaN(lm.y) ? lm.y : 0,
+                z: typeof lm.z === "number" && !isNaN(lm.z) ? lm.z : 0,
+              }))
+          : landmarks.map((p) => ({
+              x: (p.x - 0.5) * 0.2,
+              y: (p.y - 0.5) * 0.2,
+              z: p.z * 0.2,
+            }));
+        return { handedness, score, landmarks, worldLandmarks };
       })
       .filter((h: { landmarks: unknown[] }) => h.landmarks.length === 21);
 
     if (validHands.length === 0) continue;
 
+    const rawDataUrl = typeof s.imageDataUrl === "string" ? s.imageDataUrl.trim() : "";
+    const isSafeDataUrl = /^data:image\/(jpe?g|png|webp);base64,[A-Za-z0-9+/=\s\-_]+$/i.test(rawDataUrl);
+    const imageDataUrl = isSafeDataUrl ? rawDataUrl : "";
+
     validSamples.push({
       id: typeof s.id === "string" && s.id ? s.id : `sample_${Date.now()}_${i}`,
       className,
       timestamp: typeof s.timestamp === "number" ? s.timestamp : Date.now(),
-      imageDataUrl: typeof s.imageDataUrl === "string" ? s.imageDataUrl : "",
+      imageDataUrl,
       hands: validHands,
       width: typeof s.width === "number" ? s.width : 640,
       height: typeof s.height === "number" ? s.height : 480,

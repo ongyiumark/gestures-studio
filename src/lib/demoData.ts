@@ -106,18 +106,24 @@ const POSE_TEMPLATES: Record<string, Point3D[]> = {
   ],
 };
 
+let sharedThumbnailCanvas: HTMLCanvasElement | null = null;
+
 function renderSyntheticThumbnail(
   hand: DetectedHand,
   className: string,
   accentColor: string
 ): string {
   if (typeof document === "undefined") return "";
-  const canvas = document.createElement("canvas");
-  canvas.width = 320;
-  canvas.height = 240;
+  if (!sharedThumbnailCanvas) {
+    sharedThumbnailCanvas = document.createElement("canvas");
+    sharedThumbnailCanvas.width = 320;
+    sharedThumbnailCanvas.height = 240;
+  }
+  const canvas = sharedThumbnailCanvas;
   const ctx = canvas.getContext("2d");
   if (!ctx) return "";
 
+  ctx.clearRect(0, 0, 320, 240);
   const grad = ctx.createLinearGradient(0, 0, 320, 240);
   grad.addColorStop(0, "#0f172a");
   grad.addColorStop(1, "#1e293b");
