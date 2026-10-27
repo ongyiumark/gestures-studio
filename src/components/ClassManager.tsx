@@ -330,6 +330,7 @@ interface ClassManagerProps {
   onDeleteSample: (id: string) => void;
   onClearAll: () => void;
   isTraining?: boolean;
+  onPreviewModalChange?: (isOpen: boolean) => void;
 }
 
 const PRESET_CLASSES = [
@@ -352,6 +353,7 @@ function ClassManager({
   onDeleteSample,
   onClearAll,
   isTraining = false,
+  onPreviewModalChange,
 }: ClassManagerProps) {
   const [newClassInput, setNewClassInput] = useState("");
   const [editingClass, setEditingClass] = useState<string | null>(null);
@@ -359,6 +361,16 @@ function ClassManager({
   const [showOverlayOnThumbs, setShowOverlayOnThumbs] = useState(true);
   const [galleryFilter, setGalleryFilter] = useState<"active" | "all">("active");
   const [previewSample, setPreviewSample] = useState<CapturedSample | null>(null);
+
+  const handleOpenPreview = (sample: CapturedSample) => {
+    setPreviewSample(sample);
+    onPreviewModalChange?.(true);
+  };
+
+  const handleClosePreview = () => {
+    setPreviewSample(null);
+    onPreviewModalChange?.(false);
+  };
 
   const handleCreate = (e: React.FormEvent) => {
     e.preventDefault();
@@ -656,7 +668,7 @@ function ClassManager({
                   sample={sample}
                   accentColor={colorMap.get(sample.className) || "#38bdf8"}
                   showOverlay={showOverlayOnThumbs}
-                  onPreview={setPreviewSample}
+                  onPreview={handleOpenPreview}
                   onDelete={onDeleteSample}
                 />
               ))}
@@ -669,8 +681,11 @@ function ClassManager({
         <SamplePreviewModal
           sample={previewSample}
           accentColor={colorMap.get(previewSample.className) || "#38bdf8"}
-          onClose={() => setPreviewSample(null)}
-          onDelete={onDeleteSample}
+          onClose={handleClosePreview}
+          onDelete={(id) => {
+            onDeleteSample(id);
+            handleClosePreview();
+          }}
         />
       )}
     </div>

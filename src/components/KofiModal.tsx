@@ -88,15 +88,15 @@ export default function KofiModal({
       aria-modal="true"
       aria-labelledby="kofi-modal-title"
       onClick={onClose}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-3 sm:p-4 backdrop-blur-sm animate-in fade-in duration-150"
+      className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto p-2.5 sm:p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-150"
     >
       <div
         ref={modalRef}
         onClick={(e) => e.stopPropagation()}
-        className="relative flex w-full max-w-[342px] flex-col overflow-hidden rounded-2xl border border-ocean-600/70 bg-[#0c1a29] shadow-2xl shadow-black/80 max-h-[94vh]"
+        className="relative flex w-full max-w-[342px] flex-col overflow-hidden rounded-2xl border border-ocean-600/70 bg-[#0c1a29] shadow-2xl shadow-black/80 my-auto max-h-[calc(100dvh-20px)] sm:max-h-[calc(100dvh-36px)]"
       >
         {/* Header Bar: Perfectly aligned with site's ocean gradient & typography */}
-        <div className="flex items-center justify-between border-b border-ocean-700/60 bg-gradient-to-r from-[#173857] via-[#286398] to-[#193d60] px-3.5 py-2.5 shadow-sm">
+        <div className="shrink-0 flex items-center justify-between border-b border-ocean-700/60 bg-gradient-to-r from-[#173857] via-[#286398] to-[#193d60] px-3.5 py-2.5 shadow-sm">
           <div className="flex items-center gap-2">
             <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-gold-200/20 border border-gold-300/40 text-gold-200 shadow-sm">
               <Coffee className="h-3.5 w-3.5 text-[#FFE79C]" />
@@ -163,12 +163,14 @@ export default function KofiModal({
           </div>
         </div>
 
-        {/* Embedded Ko-fi Widget Container: Sized precisely to 342px to eliminate side gutters & top gaps */}
+        {/* Embedded Ko-fi Widget Container: Sized precisely to 342px, scrollable on shorter tablet viewports */}
         <div
-          className={`relative flex-1 overflow-hidden transition-colors duration-200 ${
+          className={`relative flex-1 overflow-y-auto overscroll-contain transition-colors duration-200 ${
             isDarkMode ? "bg-[#0c1a29]" : "bg-[#f5f7f9]"
           }`}
-          style={{ height: "660px" }}
+          style={{
+            maxHeight: "calc(100dvh - 88px)",
+          }}
         >
           {isLoading && (
             <div
@@ -188,16 +190,33 @@ export default function KofiModal({
             src={kofiEmbedUrl}
             onLoad={() => setIsLoading(false)}
             title="Support on Ko-fi"
-            allow="payment"
+            allow="payment *; payment"
             className="w-full border-none transition-all duration-300"
             style={{
-              height: "670px",
+              height: "640px",
+              minHeight: "640px",
               marginTop: "-8px", // Clean flush alignment: trims top margin so the blue polygon banner sits flush with the header
               filter: isDarkMode
                 ? "invert(0.9) hue-rotate(185deg) contrast(1.08) brightness(0.96)"
                 : "none",
             }}
           />
+        </div>
+
+        {/* Tablet / Mobile Fallback: Direct link if browser security or embedded payment hangs */}
+        <div className="shrink-0 border-t border-ocean-700/60 bg-[#081522] px-3 py-1.5 text-center">
+          <a
+            href={kofiDirectUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 text-[11px] font-medium text-sky-200/80 hover:text-gold-200 transition"
+          >
+            <span>Payment slow or freezing?</span>
+            <span className="text-[#FFE79C] underline underline-offset-2 flex items-center gap-0.5">
+              Open directly on Ko-fi
+              <ExternalLink className="h-2.5 w-2.5 inline" />
+            </span>
+          </a>
         </div>
       </div>
     </div>
