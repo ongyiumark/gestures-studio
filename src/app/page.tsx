@@ -40,6 +40,7 @@ import {
   BookOpen,
   BrainCircuit,
   FolderPlus,
+  Heart,
   Layers,
   Sparkles,
   X,
@@ -751,6 +752,34 @@ export default function HandPoseStudioPage() {
           )}
         </div>
       </main>
+
+      {/* Footer */}
+      <footer className="mt-auto border-t border-ocean-800/50 bg-[#071320]/80 py-3 px-4 text-center text-xs text-slate-400">
+        <div className="mx-auto flex max-w-[1600px] flex-wrap items-center justify-between gap-3 text-slate-400">
+          <p className="text-[11px] sm:text-xs text-slate-400">
+            Hand Pose Studio &bull; 100% in-browser 3D dataset creation &amp; ML training.
+          </p>
+          <div className="flex items-center gap-4 text-[11px] sm:text-xs">
+            <a
+              href="https://github.com/ongyiumark/handpose-studio"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-slate-400 hover:text-slate-200 transition"
+            >
+              GitHub
+            </a>
+            <a
+              href="https://github.com/sponsors/ongyiumark"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1 text-slate-400 hover:text-rose-300 transition"
+            >
+              <Heart className="h-3 w-3 text-rose-400/70" />
+              <span>Sponsor</span>
+            </a>
+          </div>
+        </div>
+      </footer>
 
       {/* Interactive Onboarding Walkthrough Modal */}
       <TutorialModal

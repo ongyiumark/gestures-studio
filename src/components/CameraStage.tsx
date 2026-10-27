@@ -61,7 +61,8 @@ export default function CameraStage({
     onHandsDetectedRef.current = onHandsDetected;
   }, [onHandsDetected]);
 
-  const [cameraOn, setCameraOn] = useState<boolean>(true);
+  const [cameraOn, setCameraOn] = useState<boolean>(false);
+  const [hasStartedOnce, setHasStartedOnce] = useState<boolean>(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [mirrored, setMirrored] = useState<boolean>(true);
   const [showSkeleton, setShowSkeleton] = useState<boolean>(true);
@@ -71,7 +72,7 @@ export default function CameraStage({
   const [showConfidenceTooltip, setShowConfidenceTooltip] = useState<boolean>(false);
 
   const [activeDelegate, setActiveDelegate] = useState<"CPU" | "GPU">("CPU");
-  const [videoStatus, setVideoStatus] = useState<string>("Connecting…");
+  const [videoStatus, setVideoStatus] = useState<string>("Off");
   const [videoPaused, setVideoPaused] = useState<boolean>(false);
   const [lastDetectError, setLastDetectError] = useState<string | null>(null);
   const [fpsVal, setFpsVal] = useState<number>(0);
@@ -250,6 +251,12 @@ export default function CameraStage({
     }
   }, [minConfidence, maxHands]);
 
+  const handleEnableCamera = useCallback(() => {
+    setHasStartedOnce(true);
+    setCameraError(null);
+    setCameraOn(true);
+  }, []);
+
   // Start / Stop Webcam Stream
   useEffect(() => {
     let activeStream: MediaStream | null = null;
@@ -267,11 +274,13 @@ export default function CameraStage({
         setCountdown(null);
         setIsBursting(false);
         setBurstCount(0);
+        setVideoStatus("Off");
         return;
       }
 
       try {
         setCameraError(null);
+        setVideoStatus("Connecting…");
         const stream = await navigator.mediaDevices.getUserMedia({
           video: {
             width: { ideal: 640 },
@@ -304,6 +313,7 @@ export default function CameraStage({
             "Camera access unavailable or denied. Check browser permissions."
           );
           setCameraOn(false);
+          setVideoStatus("Off");
         }
       }
     }
@@ -616,7 +626,9 @@ export default function CameraStage({
           />
           <span className="text-xs font-semibold text-slate-100 truncate">
             {!cameraOn
-              ? "Camera Paused"
+              ? hasStartedOnce
+                ? "Camera Paused"
+                : "Camera Inactive"
               : handDetected
               ? `${liveHands.length === 1 ? "1 Hand" : `${liveHands.length} Hands`} Tracked (${liveHands
                   .map((h) => `${h.handedness[0]}: ${(h.score * 100).toFixed(0)}%`)
@@ -671,7 +683,13 @@ export default function CameraStage({
           </button>
 
           <button
-            onClick={() => setCameraOn((c) => !c)}
+            onClick={() => {
+              if (cameraOn) {
+                setCameraOn(false);
+              } else {
+                handleEnableCamera();
+              }
+            }}
             title={cameraOn ? "Turn Off Camera" : "Turn On Camera"}
             className={`flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-medium transition ${
               cameraOn
@@ -872,6 +890,8 @@ export default function CameraStage({
               className={`h-2 w-2 rounded-full ${
                 videoStatus.includes("Active") || videoStatus.includes("×")
                   ? "bg-emerald-400 shadow-[0_0_6px_#34d399]"
+                  : videoStatus === "Off"
+                  ? "bg-slate-500"
                   : "bg-amber-400 animate-pulse"
               }`}
             />
@@ -953,7 +973,7 @@ export default function CameraStage({
         )}
 
         {/* Loading / Camera Off States */}
-        {!modelReady && !modelError && (
+        {!modelReady && !modelError && cameraOn && (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-slate-950/80 p-6 text-center backdrop-blur-sm">
             <Loader2 className="h-8 w-8 animate-spin text-cyan-400" />
             <div>
@@ -980,26 +1000,60 @@ export default function CameraStage({
           </div>
         )}
 
-        {!cameraOn && modelReady && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-slate-950/90 p-6 text-center">
-            <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-slate-800 bg-slate-900 text-slate-400">
-              <CameraOff className="h-7 w-7" />
-            </div>
-            <div className="max-w-sm">
-              <p className="text-sm font-semibold text-slate-200">
-                {cameraError ? "Webcam Unavailable" : "Camera Stream Paused"}
-              </p>
-              <p className="mt-1 text-xs text-slate-400">
-                {cameraError ||
-                  "Click Start Camera below to resume real-time 3D hand tracking."}
-              </p>
-            </div>
-            <button
-              onClick={() => setCameraOn(true)}
-              className="mt-1 flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-terracotta-500 to-terracotta-600 px-4 py-2 text-xs font-bold text-white shadow-sm shadow-terracotta-950/40 transition hover:from-terracotta-400 hover:to-terracotta-500"
+        {!cameraOn && !modelError && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3.5 bg-slate-950/90 p-6 text-center backdrop-blur-xs">
+            <div
+              className={`flex h-14 w-14 items-center justify-center rounded-2xl border ${
+                cameraError
+                  ? "border-rose-500/40 bg-rose-950/40 text-rose-400"
+                  : hasStartedOnce
+                  ? "border-slate-800 bg-slate-900 text-slate-400"
+                  : "border-ocean-500/50 bg-[#132c48] text-cyan-300 shadow-lg shadow-cyan-950/30"
+              }`}
             >
-              <Play className="h-3.5 w-3.5" />
-              <span>Start Camera</span>
+              {cameraError || hasStartedOnce ? (
+                <CameraOff className="h-7 w-7" />
+              ) : (
+                <Camera className="h-7 w-7" />
+              )}
+            </div>
+
+            <div className="max-w-sm">
+              <p className="text-sm font-semibold text-slate-100">
+                {cameraError
+                  ? "Camera Unavailable"
+                  : hasStartedOnce
+                  ? "Camera Stream Paused"
+                  : "Camera is Inactive"}
+              </p>
+              <p className="mt-1 text-xs text-slate-400 leading-relaxed">
+                {cameraError ||
+                  (hasStartedOnce
+                    ? "Click Resume Camera below to continue tracking your hand poses."
+                    : "Click below to enable your camera and begin real-time 3D hand tracking.")}
+              </p>
+            </div>
+
+            <button
+              onClick={handleEnableCamera}
+              className="mt-1 flex items-center gap-2 rounded-xl bg-gradient-to-r from-terracotta-500 to-terracotta-600 px-5 py-2.5 text-xs font-bold text-white shadow-lg shadow-terracotta-950/50 transition hover:from-terracotta-400 hover:to-terracotta-500 active:scale-95"
+            >
+              {cameraError ? (
+                <>
+                  <RefreshCw className="h-3.5 w-3.5" />
+                  <span>Retry Camera Access</span>
+                </>
+              ) : hasStartedOnce ? (
+                <>
+                  <Play className="h-3.5 w-3.5" />
+                  <span>Resume Camera</span>
+                </>
+              ) : (
+                <>
+                  <Camera className="h-4 w-4" />
+                  <span>Enable Camera</span>
+                </>
+              )}
             </button>
           </div>
         )}

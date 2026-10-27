@@ -8,6 +8,7 @@ import {
   Download,
   FolderArchive,
   HardDrive,
+  Heart,
   HelpCircle,
   Loader2,
   Sparkles,
@@ -205,6 +206,18 @@ function Navbar({
             <Download className="h-3.5 w-3.5" />
             <span className="hidden min-[480px]:inline">Download ZIP</span>
           </button>
+
+          <a
+            href="https://github.com/sponsors/ongyiumark"
+            target="_blank"
+            rel="noopener noreferrer"
+            title="Sponsor on GitHub"
+            aria-label="Sponsor on GitHub"
+            className="flex items-center gap-1.5 rounded-lg border border-ocean-700/60 bg-[#0e2135]/80 px-2.5 py-1.5 text-xs text-sky-200/80 transition hover:bg-[#163554] hover:text-white active:scale-95"
+          >
+            <Heart className="h-3.5 w-3.5 text-rose-400/80" />
+            <span className="hidden sm:inline">Sponsor</span>
+          </a>
 
           <button
             onClick={onToggleHelp}
