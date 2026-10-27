@@ -167,6 +167,7 @@ function TrainerPanel({
         <button
           type="button"
           disabled={isTraining}
+          aria-pressed={config.classifierType === "mlp"}
           onClick={() => onChangeConfig({ ...config, classifierType: "mlp" })}
           className={`flex items-center gap-2.5 rounded-xl border p-2.5 text-left transition ${
             config.classifierType === "mlp"
@@ -186,6 +187,7 @@ function TrainerPanel({
         <button
           type="button"
           disabled={isTraining}
+          aria-pressed={config.classifierType === "knn"}
           onClick={() => onChangeConfig({ ...config, classifierType: "knn" })}
           className={`flex items-center gap-2.5 rounded-xl border p-2.5 text-left transition ${
             config.classifierType === "knn"
@@ -349,7 +351,11 @@ function TrainerPanel({
 
       {/* Live Training Curves & Model Telemetry */}
       {(historyToDisplay.length > 0 || trainedModel) && (
-        <div className="mt-3 grid grid-cols-1 gap-3 lg:grid-cols-2">
+        <div
+          className={`mt-3 grid grid-cols-1 gap-3 ${
+            historyToDisplay.length > 0 && trainedModel ? "lg:grid-cols-2" : ""
+          }`}
+        >
           {/* SVG Training Curves */}
           {historyToDisplay.length > 0 && (
             <div className="rounded-xl border border-ocean-700/60 bg-[#08121d] p-3">

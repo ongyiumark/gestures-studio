@@ -329,6 +329,7 @@ interface ClassManagerProps {
   onDeleteClass: (name: string) => void;
   onDeleteSample: (id: string) => void;
   onClearAll: () => void;
+  isTraining?: boolean;
 }
 
 const PRESET_CLASSES = [
@@ -350,6 +351,7 @@ function ClassManager({
   onDeleteClass,
   onDeleteSample,
   onClearAll,
+  isTraining = false,
 }: ClassManagerProps) {
   const [newClassInput, setNewClassInput] = useState("");
   const [editingClass, setEditingClass] = useState<string | null>(null);
@@ -422,7 +424,8 @@ function ClassManager({
           {samples.length > 0 && (
             <button
               onClick={onClearAll}
-              className="text-[11px] font-medium text-terracotta-400 hover:text-terracotta-300 hover:underline"
+              disabled={isTraining}
+              className="text-[11px] font-medium text-terracotta-400 hover:text-terracotta-300 hover:underline disabled:opacity-40 disabled:cursor-not-allowed"
             >
               Reset Workspace
             </button>
@@ -435,13 +438,14 @@ function ClassManager({
             type="text"
             value={newClassInput}
             onChange={(e) => setNewClassInput(e.target.value)}
+            disabled={isTraining}
             placeholder="Enter new hand pose class name (e.g. Peace)…"
             aria-label="New hand pose class name"
-            className="flex-1 rounded-xl border border-ocean-700/60 bg-[#081320] px-3 py-2 text-xs text-white placeholder-slate-400 focus:border-ocean-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-ocean-400"
+            className="flex-1 rounded-xl border border-ocean-700/60 bg-[#081320] px-3 py-2 text-xs text-white placeholder-slate-400 focus:border-ocean-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-ocean-400 disabled:opacity-40"
           />
           <button
             type="submit"
-            disabled={!newClassInput.trim()}
+            disabled={!newClassInput.trim() || isTraining}
             className="flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-terracotta-500 to-terracotta-600 px-3.5 py-2 text-xs font-bold text-white shadow-sm shadow-terracotta-950/40 transition hover:from-terracotta-400 hover:to-terracotta-500 disabled:cursor-not-allowed disabled:opacity-40 active:scale-95"
           >
             <Plus className="h-4 w-4" />
@@ -457,8 +461,9 @@ function ClassManager({
               <button
                 key={preset}
                 type="button"
+                disabled={isTraining}
                 onClick={() => onAddClass(preset)}
-                className="rounded-full border border-ocean-700/60 bg-[#091522] px-2.5 py-0.5 text-[11px] font-medium text-sky-200 transition hover:border-ocean-500 hover:text-white"
+                className="rounded-full border border-ocean-700/60 bg-[#091522] px-2.5 py-0.5 text-[11px] font-medium text-sky-200 transition hover:border-ocean-500 hover:text-white disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 + {preset}
               </button>
@@ -492,6 +497,7 @@ function ClassManager({
                       type="text"
                       value={editValue}
                       onChange={(e) => setEditValue(e.target.value)}
+                      onBlur={() => commitRename(cls.name)}
                       onKeyDown={(e) => {
                         if (e.key === "Enter") commitRename(cls.name);
                         if (e.key === "Escape") setEditingClass(null);
@@ -502,6 +508,7 @@ function ClassManager({
                     />
                     <button
                       type="button"
+                      onMouseDown={(e) => e.preventDefault()}
                       onClick={() => commitRename(cls.name)}
                       className="rounded p-1 text-emerald-400 hover:bg-[#16304d]"
                       aria-label="Confirm rename"
@@ -543,19 +550,21 @@ function ClassManager({
                   <div className="flex items-center gap-1 opacity-70 group-hover:opacity-100">
                     <button
                       type="button"
+                      disabled={isTraining}
                       onClick={() => startRename(cls.name)}
                       title="Rename class"
                       aria-label={`Rename ${cls.name}`}
-                      className="rounded-lg p-1.5 text-slate-400 hover:bg-[#16304d] hover:text-white"
+                      className="rounded-lg p-1.5 text-slate-400 hover:bg-[#16304d] hover:text-white disabled:opacity-30 disabled:cursor-not-allowed"
                     >
                       <Edit3 className="h-3.5 w-3.5" />
                     </button>
                     <button
                       type="button"
+                      disabled={isTraining}
                       onClick={() => onDeleteClass(cls.name)}
                       title="Delete class and its samples"
                       aria-label={`Delete class ${cls.name}`}
-                      className="rounded-lg p-1.5 text-slate-400 hover:bg-terracotta-500/20 hover:text-terracotta-300"
+                      className="rounded-lg p-1.5 text-slate-400 hover:bg-terracotta-500/20 hover:text-terracotta-300 disabled:opacity-30 disabled:cursor-not-allowed"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                     </button>
@@ -580,6 +589,8 @@ function ClassManager({
           <div className="flex items-center gap-2">
             <div className="flex rounded-lg border border-ocean-700/60 bg-[#08121d] p-0.5 text-[11px]">
               <button
+                type="button"
+                aria-pressed={galleryFilter === "active"}
                 onClick={() => setGalleryFilter("active")}
                 className={`rounded-md px-2.5 py-0.5 font-medium transition ${
                   galleryFilter === "active"
@@ -590,6 +601,8 @@ function ClassManager({
                 Active Class
               </button>
               <button
+                type="button"
+                aria-pressed={galleryFilter === "all"}
                 onClick={() => setGalleryFilter("all")}
                 className={`rounded-md px-2.5 py-0.5 font-medium transition ${
                   galleryFilter === "all"
@@ -602,6 +615,8 @@ function ClassManager({
             </div>
 
             <button
+              type="button"
+              aria-pressed={showOverlayOnThumbs}
               onClick={() => setShowOverlayOnThumbs((v) => !v)}
               title="Toggle 21-keypoint skeleton on sample thumbnails"
               className={`flex items-center gap-1 rounded-lg border px-2 py-1 text-[11px] font-medium transition ${

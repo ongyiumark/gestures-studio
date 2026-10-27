@@ -69,7 +69,10 @@ export default function DatasetHubModal({
   const [savedModels, setSavedModels] = useState<TrainedModelRecord[]>([]);
   const [loadingLocal, setLoadingLocal] = useState(false);
   const [savingSnapshot, setSavingSnapshot] = useState(false);
-  const [statusMsg, setStatusMsg] = useState<string | null>(null);
+  const [statusMsg, setStatusMsg] = useState<{
+    type: "success" | "error";
+    text: string;
+  } | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const modalRef = useRef<HTMLDivElement | null>(null);
@@ -148,9 +151,9 @@ export default function DatasetHubModal({
 
   if (!isOpen) return null;
 
-  const showTempMessage = (msg: string) => {
-    setStatusMsg(msg);
-    setTimeout(() => setStatusMsg(null), 3000);
+  const showTempMessage = (text: string, type: "success" | "error" = "success") => {
+    setStatusMsg({ type, text });
+    setTimeout(() => setStatusMsg(null), 3500);
   };
 
   const handleSaveSnapshot = async (e: React.FormEvent) => {
@@ -170,7 +173,8 @@ export default function DatasetHubModal({
       showTempMessage("Dataset snapshot saved to your browser's local storage!");
     } catch (err) {
       showTempMessage(
-        err instanceof Error ? err.message : "Failed to save local snapshot"
+        err instanceof Error ? err.message : "Failed to save local snapshot",
+        "error"
       );
     } finally {
       setSavingSnapshot(false);
@@ -196,7 +200,7 @@ export default function DatasetHubModal({
       );
       onClose();
     } catch {
-      showTempMessage("Failed to load dataset from local storage.");
+      showTempMessage("Failed to load dataset from local storage.", "error");
     } finally {
       setLoadingLocal(false);
     }
@@ -216,7 +220,7 @@ export default function DatasetHubModal({
       await deleteDatasetLocally(id);
       setSavedDatasets((prev) => prev.filter((d) => d.id !== id));
     } catch {
-      showTempMessage("Failed to delete local dataset.");
+      showTempMessage("Failed to delete local dataset.", "error");
     }
   };
 
@@ -234,7 +238,7 @@ export default function DatasetHubModal({
       await deleteModelLocally(id);
       setSavedModels((prev) => prev.filter((m) => m.id !== id));
     } catch {
-      showTempMessage("Failed to delete local model.");
+      showTempMessage("Failed to delete local model.", "error");
     }
   };
 
@@ -266,7 +270,8 @@ export default function DatasetHubModal({
       onClose();
     } catch (err) {
       showTempMessage(
-        err instanceof Error ? err.message : "Invalid dataset JSON file"
+        err instanceof Error ? err.message : "Invalid dataset JSON file",
+        "error"
       );
     } finally {
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -311,8 +316,10 @@ export default function DatasetHubModal({
         </div>
 
         {/* Modal Tabs */}
-        <div className="flex border-b border-ocean-700/50 bg-[#091522] px-4 sm:px-6 pt-2">
+        <div role="tablist" aria-label="Dataset Hub Sections" className="flex border-b border-ocean-700/50 bg-[#091522] px-4 sm:px-6 pt-2">
           <button
+            role="tab"
+            aria-selected={activeTab === "export"}
             onClick={() => setActiveTab("export")}
             className={`border-b-2 px-3 sm:px-4 py-2 text-xs font-bold transition ${
               activeTab === "export"
@@ -323,6 +330,8 @@ export default function DatasetHubModal({
             Export &amp; Import Files
           </button>
           <button
+            role="tab"
+            aria-selected={activeTab === "local"}
             onClick={() => setActiveTab("local")}
             className={`border-b-2 px-3 sm:px-4 py-2 text-xs font-bold transition ${
               activeTab === "local"
@@ -335,8 +344,14 @@ export default function DatasetHubModal({
         </div>
 
         {statusMsg && (
-          <div className="bg-ocean-600/30 border-b border-ocean-500/40 px-5 py-2 text-xs font-medium text-sky-200">
-            {statusMsg}
+          <div
+            className={`border-b px-5 py-2 text-xs font-medium ${
+              statusMsg.type === "error"
+                ? "bg-rose-950/60 border-rose-500/40 text-rose-300"
+                : "bg-ocean-600/30 border-ocean-500/40 text-sky-200"
+            }`}
+          >
+            {statusMsg.text}
           </div>
         )}
 

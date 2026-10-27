@@ -114,8 +114,11 @@ export async function exportDatasetZip(
     const baseName = `${safeClass}-${idx+1}_${shortId}`;
 
     if (sample.imageDataUrl && sample.imageDataUrl.includes(",")) {
-      const base64Img = sample.imageDataUrl.split(",")[1];
-      classFolder.file(`${baseName}.jpeg`, base64Img, { base64: true });
+      const [header, base64Img] = sample.imageDataUrl.split(",");
+      let ext = "jpeg";
+      if (header.includes("image/png")) ext = "png";
+      else if (header.includes("image/webp")) ext = "webp";
+      classFolder.file(`${baseName}.${ext}`, base64Img, { base64: true });
     }
 
     const annotationPayload = formatHandAnnotationsForExport(
@@ -298,9 +301,22 @@ export function parseImportedDatasetJson(jsonText: string): {
     }
   }
 
+  // Normalize each sample's className to canonical casing registered in validClasses
+  const canonicalNameMap = new Map<string, string>();
+  for (const c of validClasses) {
+    canonicalNameMap.set(c.name.toLowerCase(), c.name);
+  }
+
+  const normalizedSamples = validSamples.map((s) => {
+    const canonical = canonicalNameMap.get(s.className.toLowerCase());
+    return canonical && canonical !== s.className
+      ? { ...s, className: canonical }
+      : s;
+  });
+
   return {
     classes: validClasses,
-    samples: validSamples,
+    samples: normalizedSamples,
     name: typeof raw.name === "string" ? raw.name : undefined,
   };
 }

@@ -72,6 +72,34 @@ export default function CameraStage({
   const [minConfidence, setMinConfidence] = useState<number>(0.35);
   const [showSettings, setShowSettings] = useState<boolean>(false);
   const [showConfidenceTooltip, setShowConfidenceTooltip] = useState<boolean>(false);
+  const confidenceTooltipRef = useRef<HTMLDivElement | null>(null);
+
+  // Dismiss confidence tooltip on outside click or Escape key
+  useEffect(() => {
+    if (!showConfidenceTooltip) return;
+
+    const handlePointerDownOutside = (e: PointerEvent) => {
+      if (
+        confidenceTooltipRef.current &&
+        !confidenceTooltipRef.current.contains(e.target as Node)
+      ) {
+        setShowConfidenceTooltip(false);
+      }
+    };
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setShowConfidenceTooltip(false);
+      }
+    };
+
+    document.addEventListener("pointerdown", handlePointerDownOutside);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDownOutside);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [showConfidenceTooltip]);
 
   const [activeDelegate, setActiveDelegate] = useState<"CPU" | "GPU">("CPU");
   const [videoStatus, setVideoStatus] = useState<string>("Off");
@@ -334,6 +362,17 @@ export default function CameraStage({
   useEffect(() => {
     let running = true;
 
+    if (!cameraOn) {
+      const canvas = canvasRef.current;
+      if (canvas) {
+        const ctx = canvas.getContext("2d");
+        ctx?.clearRect(0, 0, canvas.width, canvas.height);
+      }
+      return () => {
+        running = false;
+      };
+    }
+
     const detectFrame = () => {
       if (!running) return;
 
@@ -437,7 +476,9 @@ export default function CameraStage({
             // Throttle React state telemetry to ~10 FPS to keep main thread fast and prevent frame drops
             if (nowMs - lastStateUpdateRef.current >= 100) {
               lastStateUpdateRef.current = nowMs;
-              setLiveHands(detected);
+              setLiveHands((prev) =>
+                prev.length === 0 && detected.length === 0 ? prev : detected
+              );
               setFpsVal(currentFps);
               const currentRes = `${vw}×${vh}`;
               setVideoStatus((prev) => (prev === currentRes ? prev : currentRes));
@@ -480,7 +521,9 @@ export default function CameraStage({
         ctx?.clearRect(0, 0, canvas.width, canvas.height);
       }
 
-      rafRef.current = requestAnimationFrame(detectFrame);
+      if (running) {
+        rafRef.current = requestAnimationFrame(detectFrame);
+      }
     };
 
     rafRef.current = requestAnimationFrame(detectFrame);
@@ -605,6 +648,11 @@ export default function CameraStage({
 
   useEffect(() => {
     if (!isBursting) return;
+    if (!activeClass || !cameraOn) {
+      setIsBursting(false);
+      setBurstCount(0);
+      return;
+    }
     const interval = setInterval(() => {
       if (latestHandsRef.current.length > 0) {
         const ok = captureNow(true);
@@ -622,7 +670,7 @@ export default function CameraStage({
     }, 220);
 
     return () => clearInterval(interval);
-  }, [isBursting, burstTarget, captureNow]);
+  }, [isBursting, burstTarget, captureNow, activeClass, cameraOn]);
 
   const handDetected = liveHands.length > 0;
 
@@ -741,6 +789,8 @@ export default function CameraStage({
               {[1, 2].map((n) => (
                 <button
                   key={n}
+                  type="button"
+                  aria-pressed={maxHands === n}
                   onClick={() => setMaxHands(n as 1 | 2)}
                   className={`rounded-md px-2.5 py-0.5 font-medium transition ${
                     maxHands === n
@@ -763,6 +813,7 @@ export default function CameraStage({
 
               {/* Tooltip trigger wrapped in relative container */}
               <div
+                ref={confidenceTooltipRef}
                 className="relative inline-flex items-center"
                 onMouseEnter={() => setShowConfidenceTooltip(true)}
                 onMouseLeave={() => setShowConfidenceTooltip(false)}
@@ -856,6 +907,8 @@ export default function CameraStage({
               {(["CPU", "GPU"] as const).map((d) => (
                 <button
                   key={d}
+                  type="button"
+                  aria-pressed={activeDelegate === d}
                   onClick={() => {
                     setActiveDelegate(d);
                     setRetryCount((r) => r + 1);

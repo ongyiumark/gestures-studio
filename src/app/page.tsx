@@ -378,7 +378,7 @@ export default function HandPoseStudioPage() {
       } else if (
         trainedModelRecord?.classifierType === "knn" &&
         trainedModelRecord.knnExemplars &&
-        trainedModelRecord.knnExemplars.length >= 4
+        trainedModelRecord.knnExemplars.length >= 2
       ) {
         const pred = predictWithKNN(
           trainedModelRecord.knnExemplars,
@@ -390,7 +390,7 @@ export default function HandPoseStudioPage() {
       } else if (
         (trainedModelRecord?.classifierType === "knn" ||
           trainingConfig.classifierType === "knn") &&
-        workspaceExemplars.length >= 4
+        workspaceExemplars.length >= 2
       ) {
         // Keep k-NN active live with latest workspace exemplars
         const pred = predictWithKNN(workspaceExemplars, detectedHands, classes, 5);
@@ -625,7 +625,7 @@ export default function HandPoseStudioPage() {
             livePrediction={livePrediction}
             classifierActive={
               Boolean(trainedModelRecord) ||
-              (trainingConfig.classifierType === "knn" && workspaceExemplars.length >= 4)
+              (trainingConfig.classifierType === "knn" && workspaceExemplars.length >= 2)
             }
           />
 
@@ -653,8 +653,10 @@ export default function HandPoseStudioPage() {
         <div className="flex flex-col gap-4 lg:col-span-7">
           {/* Step Switcher Bar */}
           <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-ocean-700/60 bg-[#0e1d2e]/90 p-2 shadow-lg">
-            <div className="flex flex-1 items-center gap-1.5">
+            <div role="tablist" aria-label="Workflow Steps" className="flex flex-1 items-center gap-1.5">
               <button
+                role="tab"
+                aria-selected={activeStepTab === "collect"}
                 onClick={() => setActiveStepTab("collect")}
                 title={`Step 1: Collect (${samples.length} photos captured)`}
                 className={`flex flex-1 items-center justify-center gap-1.5 sm:gap-2 rounded-xl px-2 sm:px-3.5 py-2 text-[11px] sm:text-xs font-bold transition min-w-0 ${
@@ -668,6 +670,8 @@ export default function HandPoseStudioPage() {
               </button>
 
               <button
+                role="tab"
+                aria-selected={activeStepTab === "train"}
                 onClick={() => setActiveStepTab("train")}
                 title={`Step 2: Train & Test${
                   trainedModelRecord
@@ -691,6 +695,8 @@ export default function HandPoseStudioPage() {
             </div>
 
             <button
+              type="button"
+              aria-pressed={activeStepTab === "all"}
               onClick={() =>
                 setActiveStepTab((prev) =>
                   prev === "all" ? "collect" : "all"
@@ -723,6 +729,7 @@ export default function HandPoseStudioPage() {
                 onDeleteClass={handleDeleteClass}
                 onDeleteSample={handleDeleteSample}
                 onClearAll={handleClearWorkspace}
+                isTraining={isTraining}
               />
 
               {/* Next Step Callout Banner when user has collected >=2 classes in Tabbed mode */}
