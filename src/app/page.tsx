@@ -630,6 +630,7 @@ export default function HandPoseStudioPage() {
               Boolean(trainedModelRecord) ||
               (trainingConfig.classifierType === "knn" && workspaceExemplars.length >= 2)
             }
+            isPaused={hubOpen || tutorialOpen || kofiOpen}
           />
 
           {/* Helpful Starter Callout when 0 samples exist */}

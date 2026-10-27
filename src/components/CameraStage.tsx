@@ -35,6 +35,7 @@ interface CameraStageProps {
   onModelStatusChange: (ready: boolean) => void;
   livePrediction: PredictionResult | null;
   classifierActive: boolean;
+  isPaused?: boolean;
 }
 
 export default function CameraStage({
@@ -44,6 +45,7 @@ export default function CameraStage({
   onModelStatusChange,
   livePrediction,
   classifierActive,
+  isPaused = false,
 }: CameraStageProps) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -376,6 +378,11 @@ export default function CameraStage({
     const detectFrame = () => {
       if (!running) return;
 
+      if (isPaused) {
+        rafRef.current = requestAnimationFrame(detectFrame);
+        return;
+      }
+
       const video = videoRef.current;
       const canvas = canvasRef.current;
       const landmarker = landmarkerRef.current;
@@ -532,7 +539,7 @@ export default function CameraStage({
       running = false;
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
     };
-  }, [cameraOn, showSkeleton, activeClass?.color, mirrored]);
+  }, [cameraOn, showSkeleton, activeClass?.color, mirrored, isPaused]);
 
   // Capture a single frame + current 21-keypoint hand landmarks
   const captureNow = useCallback((skipFlash: boolean = false): boolean => {
