@@ -69,9 +69,14 @@ export default function DatasetHubModal({
   const [savedModels, setSavedModels] = useState<TrainedModelRecord[]>([]);
   const [loadingLocal, setLoadingLocal] = useState(false);
   const [savingSnapshot, setSavingSnapshot] = useState(false);
-  const [statusMsg, setStatusMsg] = useState<string | null>(null);
+  const [statusMsg, setStatusMsg] = useState<{
+    type: "success" | "error";
+    text: string;
+  } | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const modalRef = useRef<HTMLDivElement | null>(null);
+  const triggerElementRef = useRef<HTMLElement | null>(null);
 
   const refreshLocalData = async () => {
     try {
@@ -91,11 +96,46 @@ export default function DatasetHubModal({
 
   useEffect(() => {
     if (isOpen) {
+      triggerElementRef.current = document.activeElement as HTMLElement | null;
       refreshLocalData();
     }
     if (!isOpen) return;
+
+    const modal = modalRef.current;
+    if (modal) {
+      const focusables = modal.querySelectorAll<HTMLElement>(
+        'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+      );
+      if (focusables.length > 0) {
+        focusables[0].focus();
+      }
+    }
+
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") {
+        onClose();
+        return;
+      }
+      if (e.key === "Tab" && modal) {
+        const focusables = modal.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        );
+        if (focusables.length === 0) return;
+        const first = focusables[0];
+        const last = focusables[focusables.length - 1];
+
+        if (e.shiftKey) {
+          if (document.activeElement === first) {
+            e.preventDefault();
+            last.focus();
+          }
+        } else {
+          if (document.activeElement === last) {
+            e.preventDefault();
+            first.focus();
+          }
+        }
+      }
     };
     const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
@@ -103,14 +143,17 @@ export default function DatasetHubModal({
     return () => {
       document.body.style.overflow = prevOverflow;
       window.removeEventListener("keydown", handleKeyDown);
+      if (triggerElementRef.current) {
+        triggerElementRef.current.focus();
+      }
     };
   }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 
-  const showTempMessage = (msg: string) => {
-    setStatusMsg(msg);
-    setTimeout(() => setStatusMsg(null), 3000);
+  const showTempMessage = (text: string, type: "success" | "error" = "success") => {
+    setStatusMsg({ type, text });
+    setTimeout(() => setStatusMsg(null), 3500);
   };
 
   const handleSaveSnapshot = async (e: React.FormEvent) => {
@@ -130,7 +173,8 @@ export default function DatasetHubModal({
       showTempMessage("Dataset snapshot saved to your browser's local storage!");
     } catch (err) {
       showTempMessage(
-        err instanceof Error ? err.message : "Failed to save local snapshot"
+        err instanceof Error ? err.message : "Failed to save local snapshot",
+        "error"
       );
     } finally {
       setSavingSnapshot(false);
@@ -156,7 +200,7 @@ export default function DatasetHubModal({
       );
       onClose();
     } catch {
-      showTempMessage("Failed to load dataset from local storage.");
+      showTempMessage("Failed to load dataset from local storage.", "error");
     } finally {
       setLoadingLocal(false);
     }
@@ -176,7 +220,7 @@ export default function DatasetHubModal({
       await deleteDatasetLocally(id);
       setSavedDatasets((prev) => prev.filter((d) => d.id !== id));
     } catch {
-      showTempMessage("Failed to delete local dataset.");
+      showTempMessage("Failed to delete local dataset.", "error");
     }
   };
 
@@ -194,7 +238,7 @@ export default function DatasetHubModal({
       await deleteModelLocally(id);
       setSavedModels((prev) => prev.filter((m) => m.id !== id));
     } catch {
-      showTempMessage("Failed to delete local model.");
+      showTempMessage("Failed to delete local model.", "error");
     }
   };
 
@@ -226,7 +270,8 @@ export default function DatasetHubModal({
       onClose();
     } catch (err) {
       showTempMessage(
-        err instanceof Error ? err.message : "Invalid dataset JSON file"
+        err instanceof Error ? err.message : "Invalid dataset JSON file",
+        "error"
       );
     } finally {
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -241,6 +286,7 @@ export default function DatasetHubModal({
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-3 sm:p-4 backdrop-blur-sm"
     >
       <div
+        ref={modalRef}
         onClick={(e) => e.stopPropagation()}
         className="flex max-h-[88vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-ocean-700/60 bg-[#0e1d2f] shadow-2xl"
       >
@@ -261,6 +307,8 @@ export default function DatasetHubModal({
 
           <button
             onClick={onClose}
+            title="Close dialog"
+            aria-label="Close dialog"
             className="rounded-lg p-1.5 text-slate-400 hover:bg-[#183554] hover:text-white"
           >
             <X className="h-4 w-4" />
@@ -268,8 +316,10 @@ export default function DatasetHubModal({
         </div>
 
         {/* Modal Tabs */}
-        <div className="flex border-b border-ocean-700/50 bg-[#091522] px-4 sm:px-6 pt-2">
+        <div role="tablist" aria-label="Dataset Hub Sections" className="flex border-b border-ocean-700/50 bg-[#091522] px-4 sm:px-6 pt-2">
           <button
+            role="tab"
+            aria-selected={activeTab === "export"}
             onClick={() => setActiveTab("export")}
             className={`border-b-2 px-3 sm:px-4 py-2 text-xs font-bold transition ${
               activeTab === "export"
@@ -280,6 +330,8 @@ export default function DatasetHubModal({
             Export &amp; Import Files
           </button>
           <button
+            role="tab"
+            aria-selected={activeTab === "local"}
             onClick={() => setActiveTab("local")}
             className={`border-b-2 px-3 sm:px-4 py-2 text-xs font-bold transition ${
               activeTab === "local"
@@ -292,8 +344,14 @@ export default function DatasetHubModal({
         </div>
 
         {statusMsg && (
-          <div className="bg-ocean-600/30 border-b border-ocean-500/40 px-5 py-2 text-xs font-medium text-sky-200">
-            {statusMsg}
+          <div
+            className={`border-b px-5 py-2 text-xs font-medium ${
+              statusMsg.type === "error"
+                ? "bg-rose-950/60 border-rose-500/40 text-rose-300"
+                : "bg-ocean-600/30 border-ocean-500/40 text-sky-200"
+            }`}
+          >
+            {statusMsg.text}
           </div>
         )}
 
@@ -302,14 +360,16 @@ export default function DatasetHubModal({
           {activeTab === "export" ? (
             <div className="flex flex-col gap-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-200 mb-1.5">
+                <label htmlFor="export-filename-prefix" className="block text-xs font-semibold text-slate-200 mb-1.5">
                   Export Filename Prefix
                 </label>
                 <input
+                  id="export-filename-prefix"
                   type="text"
                   value={datasetName}
                   onChange={(e) => setDatasetName(e.target.value)}
-                  className="w-full rounded-xl border border-ocean-700/60 bg-[#081320] px-3 py-2 text-xs text-white focus:border-ocean-500 focus:outline-none"
+                  aria-label="Export Filename Prefix"
+                  className="w-full rounded-xl border border-ocean-700/60 bg-[#081320] px-3 py-2 text-xs text-white focus:border-ocean-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-ocean-400"
                 />
               </div>
 
@@ -428,14 +488,16 @@ export default function DatasetHubModal({
                     value={datasetName}
                     onChange={(e) => setDatasetName(e.target.value)}
                     placeholder="Dataset snapshot name…"
-                    className="rounded-lg border border-ocean-700/60 bg-[#07111b] px-3 py-1.5 text-xs text-white"
+                    aria-label="Dataset snapshot name"
+                    className="rounded-lg border border-ocean-700/60 bg-[#07111b] px-3 py-1.5 text-xs text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-ocean-400"
                   />
                   <input
                     type="text"
                     value={snapshotDesc}
                     onChange={(e) => setSnapshotDesc(e.target.value)}
                     placeholder="Optional notes / description…"
-                    className="rounded-lg border border-ocean-700/60 bg-[#07111b] px-3 py-1.5 text-xs text-white"
+                    aria-label="Optional snapshot notes or description"
+                    className="rounded-lg border border-ocean-700/60 bg-[#07111b] px-3 py-1.5 text-xs text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-ocean-400"
                   />
                 </div>
                 <button
@@ -509,6 +571,8 @@ export default function DatasetHubModal({
                           </button>
                           <button
                             onClick={() => handleDeleteDataset(ds.id)}
+                            title={`Delete snapshot ${ds.name}`}
+                            aria-label={`Delete snapshot ${ds.name}`}
                             className="rounded-lg p-1.5 text-slate-400 hover:bg-terracotta-500/20 hover:text-terracotta-300"
                           >
                             <Trash2 className="h-3.5 w-3.5" />
@@ -571,6 +635,8 @@ export default function DatasetHubModal({
                           </button>
                           <button
                             onClick={() => handleDeleteModel(mdl.id)}
+                            title={`Delete model ${mdl.name}`}
+                            aria-label={`Delete model ${mdl.name}`}
                             className="rounded-lg p-1.5 text-slate-400 hover:bg-terracotta-500/20 hover:text-terracotta-300"
                           >
                             <Trash2 className="h-3.5 w-3.5" />

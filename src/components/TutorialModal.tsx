@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   ArrowLeft,
   ArrowRight,
@@ -84,17 +84,53 @@ export default function TutorialModal({
   onLoadDemoAndClose,
 }: TutorialModalProps) {
   const [currentIdx, setCurrentIdx] = useState(0);
+  const modalRef = useRef<HTMLDivElement | null>(null);
+  const triggerElementRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
     if (isOpen) {
+      triggerElementRef.current = document.activeElement as HTMLElement | null;
       setCurrentIdx(0);
     }
   }, [isOpen]);
 
   useEffect(() => {
     if (!isOpen) return;
+
+    const modal = modalRef.current;
+    if (modal) {
+      const focusables = modal.querySelectorAll<HTMLElement>(
+        'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+      );
+      if (focusables.length > 0) {
+        focusables[0].focus();
+      }
+    }
+
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") {
+        onClose();
+        return;
+      }
+      if (e.key === "Tab" && modal) {
+        const focusables = modal.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        );
+        if (focusables.length === 0) return;
+        const first = focusables[0];
+        const last = focusables[focusables.length - 1];
+        if (e.shiftKey) {
+          if (document.activeElement === first) {
+            e.preventDefault();
+            last.focus();
+          }
+        } else {
+          if (document.activeElement === last) {
+            e.preventDefault();
+            first.focus();
+          }
+        }
+      }
     };
     const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
@@ -102,6 +138,9 @@ export default function TutorialModal({
     return () => {
       document.body.style.overflow = prevOverflow;
       window.removeEventListener("keydown", handleKeyDown);
+      if (triggerElementRef.current) {
+        triggerElementRef.current.focus();
+      }
     };
   }, [isOpen, onClose]);
 
@@ -119,6 +158,7 @@ export default function TutorialModal({
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-3 sm:p-4 backdrop-blur-sm"
     >
       <div
+        ref={modalRef}
         onClick={(e) => e.stopPropagation()}
         className="relative flex w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-ocean-700/60 bg-[#0e1d2f] shadow-2xl max-h-[90vh] overflow-y-auto"
       >
@@ -143,6 +183,8 @@ export default function TutorialModal({
           </span>
           <button
             onClick={onClose}
+            title="Close tutorial"
+            aria-label="Close tutorial"
             className="rounded-lg p-1.5 text-slate-400 hover:bg-[#152e4a] hover:text-white"
           >
             <X className="h-4 w-4" />

@@ -362,7 +362,15 @@ export function formatHandAnnotationsForExport(
   width: number,
   height: number
 ) {
-  return hands.map((hand) => {
+  if (!Array.isArray(hands) || hands.length === 0) {
+    return [];
+  }
+
+  const validHands = hands.filter(
+    (h) => h && Array.isArray(h.landmarks) && h.landmarks.length >= 21
+  );
+
+  return validHands.map((hand) => {
     const pixelLandmarks = hand.landmarks.map((pt) => [
       Number((pt.x * width).toFixed(2)),
       Number((pt.y * height).toFixed(2)),

@@ -52,6 +52,7 @@ function TrainerPanel({
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [savingLocal, setSavingLocal] = useState(false);
   const [savedNotice, setSavedNotice] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   // Check how many classes have at least 1 valid sample
   const classSampleCounts = useMemo(() => {
@@ -83,9 +84,16 @@ function TrainerPanel({
   const handleSaveLocal = async () => {
     try {
       setSavingLocal(true);
+      setSaveError(null);
       await onSaveModelLocally();
       setSavedNotice(true);
       setTimeout(() => setSavedNotice(false), 2500);
+    } catch (err) {
+      console.error("Failed to save model locally:", err);
+      setSaveError(
+        "Failed to save model locally. Browser storage quota may be exceeded."
+      );
+      setTimeout(() => setSaveError(null), 4000);
     } finally {
       setSavingLocal(false);
     }
@@ -95,16 +103,25 @@ function TrainerPanel({
   const chartH = CHART_H;
 
   // Build SVG polyline points for Accuracy & Loss curves
-  const { accPoints, lossPoints } = useMemo(() => {
+  const { accPoints, lossPoints, singlePoint } = useMemo(() => {
     const maxEpochs = Math.max(config.epochs, historyToDisplay.length, 10);
     const maxLoss = Math.max(1.5, ...historyToDisplay.map((p) => p.loss));
 
+    if (historyToDisplay.length === 1) {
+      const pt = historyToDisplay[0];
+      const x = chartW / 2;
+      const accY = chartH - 10 - (pt.accuracy / 100) * (chartH - 20);
+      const lossY = chartH - 10 - Math.min(1, pt.loss / maxLoss) * (chartH - 20);
+      return {
+        accPoints: `${x.toFixed(1)},${accY.toFixed(1)}`,
+        lossPoints: `${x.toFixed(1)},${lossY.toFixed(1)}`,
+        singlePoint: { x, accY, lossY },
+      };
+    }
+
     const acc = historyToDisplay
       .map((pt, i) => {
-        const x =
-          historyToDisplay.length === 1
-            ? chartW / 2
-            : (i / Math.max(1, maxEpochs - 1)) * (chartW - 16) + 8;
+        const x = (i / Math.max(1, maxEpochs - 1)) * (chartW - 16) + 8;
         const y = chartH - 10 - (pt.accuracy / 100) * (chartH - 20);
         return `${x.toFixed(1)},${y.toFixed(1)}`;
       })
@@ -112,16 +129,13 @@ function TrainerPanel({
 
     const loss = historyToDisplay
       .map((pt, i) => {
-        const x =
-          historyToDisplay.length === 1
-            ? chartW / 2
-            : (i / Math.max(1, maxEpochs - 1)) * (chartW - 16) + 8;
+        const x = (i / Math.max(1, maxEpochs - 1)) * (chartW - 16) + 8;
         const y = chartH - 10 - Math.min(1, pt.loss / maxLoss) * (chartH - 20);
         return `${x.toFixed(1)},${y.toFixed(1)}`;
       })
       .join(" ");
 
-    return { accPoints: acc, lossPoints: loss };
+    return { accPoints: acc, lossPoints: loss, singlePoint: null };
   }, [historyToDisplay, config.epochs, chartW, chartH]);
 
   return (
@@ -153,6 +167,7 @@ function TrainerPanel({
         <button
           type="button"
           disabled={isTraining}
+          aria-pressed={config.classifierType === "mlp"}
           onClick={() => onChangeConfig({ ...config, classifierType: "mlp" })}
           className={`flex items-center gap-2.5 rounded-xl border p-2.5 text-left transition ${
             config.classifierType === "mlp"
@@ -172,6 +187,7 @@ function TrainerPanel({
         <button
           type="button"
           disabled={isTraining}
+          aria-pressed={config.classifierType === "knn"}
           onClick={() => onChangeConfig({ ...config, classifierType: "knn" })}
           className={`flex items-center gap-2.5 rounded-xl border p-2.5 text-left transition ${
             config.classifierType === "knn"
@@ -335,7 +351,11 @@ function TrainerPanel({
 
       {/* Live Training Curves & Model Telemetry */}
       {(historyToDisplay.length > 0 || trainedModel) && (
-        <div className="mt-3 grid grid-cols-1 gap-3 lg:grid-cols-2">
+        <div
+          className={`mt-3 grid grid-cols-1 gap-3 ${
+            historyToDisplay.length > 0 && trainedModel ? "lg:grid-cols-2" : ""
+          }`}
+        >
           {/* SVG Training Curves */}
           {historyToDisplay.length > 0 && (
             <div className="rounded-xl border border-ocean-700/60 bg-[#08121d] p-3">
@@ -398,6 +418,23 @@ function TrainerPanel({
                     strokeWidth="2.5"
                     points={accPoints}
                   />
+                )}
+
+                {singlePoint && (
+                  <>
+                    <circle
+                      cx={singlePoint.x}
+                      cy={singlePoint.lossY}
+                      r="3.5"
+                      fill="#f43f5e"
+                    />
+                    <circle
+                      cx={singlePoint.x}
+                      cy={singlePoint.accY}
+                      r="3.5"
+                      fill="#34d399"
+                    />
+                  </>
                 )}
               </svg>
             </div>
@@ -470,6 +507,12 @@ function TrainerPanel({
                   </span>
                 </button>
               </div>
+
+              {saveError && (
+                <p className="mt-2 rounded-lg border border-rose-500/30 bg-rose-950/30 px-2 py-1 text-center text-xs text-rose-300">
+                  {saveError}
+                </p>
+              )}
             </div>
           )}
         </div>

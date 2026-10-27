@@ -313,6 +313,9 @@ export async function saveDatasetLocally(params: {
     tx.onerror = () => {
       reject(tx.error);
     };
+    tx.onabort = () => {
+      reject(tx.error || new Error("Transaction aborted"));
+    };
   });
 }
 
@@ -337,6 +340,9 @@ export async function loadDatasetLocallyById(
     req.onerror = () => {
       reject(req.error);
     };
+    tx.onabort = () => {
+      reject(tx.error || new Error("Transaction aborted"));
+    };
   });
 }
 
@@ -354,6 +360,9 @@ export async function deleteDatasetLocally(id: string): Promise<void> {
     };
     tx.onerror = () => {
       reject(tx.error);
+    };
+    tx.onabort = () => {
+      reject(tx.error || new Error("Transaction aborted"));
     };
   });
 }
@@ -376,6 +385,9 @@ export async function listLocalModels(): Promise<TrainedModelRecord[]> {
       };
       req.onerror = () => {
         reject(req.error);
+      };
+      tx.onabort = () => {
+        reject(tx.error || new Error("Transaction aborted"));
       };
     });
   } catch {
@@ -408,6 +420,9 @@ export async function saveModelLocally(
     tx.onerror = () => {
       reject(tx.error);
     };
+    tx.onabort = () => {
+      reject(tx.error || new Error("Transaction aborted"));
+    };
   });
 }
 
@@ -425,6 +440,9 @@ export async function deleteModelLocally(id: string): Promise<void> {
     };
     tx.onerror = () => {
       reject(tx.error);
+    };
+    tx.onabort = () => {
+      reject(tx.error || new Error("Transaction aborted"));
     };
   });
 }
