@@ -28,6 +28,7 @@ interface NavbarProps {
   onLoadDemoData: () => void;
   onOpenTutorial: () => void;
   onToggleHelp: () => void;
+  onOpenKofi: () => void;
 }
 
 function Navbar({
@@ -43,6 +44,7 @@ function Navbar({
   onLoadDemoData,
   onOpenTutorial,
   onToggleHelp,
+  onOpenKofi,
 }: NavbarProps) {
   return (
     <header className="sticky top-0 z-30 border-b border-ocean-700/50 bg-gradient-to-r from-[#173857]/95 via-[#286398]/90 to-[#193d60]/95 backdrop-blur-md shadow-md shadow-black/20">
@@ -212,17 +214,16 @@ function Navbar({
             <span className="hidden min-[480px]:inline">Download ZIP</span>
           </button>
 
-          <a
-            href="https://ko-fi.com/ongyiumark"
-            target="_blank"
-            rel="noopener noreferrer"
-            title="Support on Ko-fi"
-            aria-label="Support on Ko-fi"
+          <button
+            type="button"
+            onClick={onOpenKofi}
+            title="Support on Ko-fi (opens donation widget)"
+            aria-label="Open Ko-fi donation widget"
             className="flex items-center gap-1.5 rounded-lg border border-ocean-700/60 bg-[#0e2135]/80 px-2.5 py-1.5 text-xs text-sky-200/80 transition hover:bg-[#163554] hover:text-white active:scale-95"
           >
             <Coffee className="h-3.5 w-3.5 text-[#FF5E5B]" />
             <span className="hidden sm:inline">Ko-fi</span>
-          </a>
+          </button>
 
           <a
             href="https://github.com/sponsors/ongyiumark"
