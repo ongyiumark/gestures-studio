@@ -360,6 +360,37 @@ export default function CameraStage({
     };
   }, [cameraOn]);
 
+  // Pause or resume hardware camera stream tracks & video playback when modal is open
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || !cameraOn) return;
+
+    const stream = video.srcObject as MediaStream | null;
+    if (!stream) return;
+
+    const tracks = stream.getVideoTracks();
+
+    if (isPaused) {
+      tracks.forEach((track) => {
+        track.enabled = false;
+      });
+      video.pause();
+      const canvas = canvasRef.current;
+      if (canvas) {
+        const ctx = canvas.getContext("2d");
+        ctx?.clearRect(0, 0, canvas.width, canvas.height);
+      }
+      onHandsDetected([], 0);
+    } else {
+      tracks.forEach((track) => {
+        track.enabled = true;
+      });
+      video.play().catch((err) => {
+        console.warn("Could not auto-resume video playback:", err);
+      });
+    }
+  }, [isPaused, cameraOn, onHandsDetected]);
+
   // Real-time requestAnimationFrame detection loop
   useEffect(() => {
     let running = true;
@@ -997,8 +1028,8 @@ export default function CameraStage({
           )}
         </div>
 
-        {/* Safari Autoplay Resume Overlay if blocked */}
-        {videoPaused && cameraOn && (
+        {/* Safari Autoplay Resume Overlay if blocked unexpectedly */}
+        {!isPaused && videoPaused && cameraOn && (
           <div className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-slate-950/80 p-6 text-center backdrop-blur-sm">
             <div className="max-w-xs space-y-3">
               <p className="text-sm font-semibold text-slate-200">

@@ -95,8 +95,11 @@ export default function HandPoseStudioPage() {
   const [hubOpen, setHubOpen] = useState(false);
   const [tutorialOpen, setTutorialOpen] = useState(false);
   const [kofiOpen, setKofiOpen] = useState(false);
+  const [samplePreviewOpen, setSamplePreviewOpen] = useState(false);
   const [showHelp, setShowHelp] = useState(true);
   const [hydrated, setHydrated] = useState(false);
+
+  const isAnyModalOpen = hubOpen || tutorialOpen || kofiOpen || samplePreviewOpen;
 
   // Load persisted workspace & preferences from browser storage on mount
   useEffect(() => {
@@ -630,7 +633,7 @@ export default function HandPoseStudioPage() {
               Boolean(trainedModelRecord) ||
               (trainingConfig.classifierType === "knn" && workspaceExemplars.length >= 2)
             }
-            isPaused={hubOpen || tutorialOpen || kofiOpen}
+            isPaused={isAnyModalOpen}
           />
 
           {/* Helpful Starter Callout when 0 samples exist */}
@@ -734,6 +737,7 @@ export default function HandPoseStudioPage() {
                 onDeleteSample={handleDeleteSample}
                 onClearAll={handleClearWorkspace}
                 isTraining={isTraining}
+                onPreviewModalChange={setSamplePreviewOpen}
               />
 
               {/* Next Step Callout Banner when user has collected >=2 classes in Tabbed mode */}
