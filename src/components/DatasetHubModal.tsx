@@ -73,6 +73,7 @@ export default function DatasetHubModal({
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const modalRef = useRef<HTMLDivElement | null>(null);
+  const triggerElementRef = useRef<HTMLElement | null>(null);
 
   const refreshLocalData = async () => {
     try {
@@ -92,6 +93,7 @@ export default function DatasetHubModal({
 
   useEffect(() => {
     if (isOpen) {
+      triggerElementRef.current = document.activeElement as HTMLElement | null;
       refreshLocalData();
     }
     if (!isOpen) return;
@@ -138,6 +140,9 @@ export default function DatasetHubModal({
     return () => {
       document.body.style.overflow = prevOverflow;
       window.removeEventListener("keydown", handleKeyDown);
+      if (triggerElementRef.current) {
+        triggerElementRef.current.focus();
+      }
     };
   }, [isOpen, onClose]);
 
@@ -297,6 +302,8 @@ export default function DatasetHubModal({
 
           <button
             onClick={onClose}
+            title="Close dialog"
+            aria-label="Close dialog"
             className="rounded-lg p-1.5 text-slate-400 hover:bg-[#183554] hover:text-white"
           >
             <X className="h-4 w-4" />
@@ -549,6 +556,8 @@ export default function DatasetHubModal({
                           </button>
                           <button
                             onClick={() => handleDeleteDataset(ds.id)}
+                            title={`Delete snapshot ${ds.name}`}
+                            aria-label={`Delete snapshot ${ds.name}`}
                             className="rounded-lg p-1.5 text-slate-400 hover:bg-terracotta-500/20 hover:text-terracotta-300"
                           >
                             <Trash2 className="h-3.5 w-3.5" />
@@ -611,6 +620,8 @@ export default function DatasetHubModal({
                           </button>
                           <button
                             onClick={() => handleDeleteModel(mdl.id)}
+                            title={`Delete model ${mdl.name}`}
+                            aria-label={`Delete model ${mdl.name}`}
                             className="rounded-lg p-1.5 text-slate-400 hover:bg-terracotta-500/20 hover:text-terracotta-300"
                           >
                             <Trash2 className="h-3.5 w-3.5" />

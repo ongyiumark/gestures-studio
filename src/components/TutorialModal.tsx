@@ -85,9 +85,11 @@ export default function TutorialModal({
 }: TutorialModalProps) {
   const [currentIdx, setCurrentIdx] = useState(0);
   const modalRef = useRef<HTMLDivElement | null>(null);
+  const triggerElementRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
     if (isOpen) {
+      triggerElementRef.current = document.activeElement as HTMLElement | null;
       setCurrentIdx(0);
     }
   }, [isOpen]);
@@ -136,6 +138,9 @@ export default function TutorialModal({
     return () => {
       document.body.style.overflow = prevOverflow;
       window.removeEventListener("keydown", handleKeyDown);
+      if (triggerElementRef.current) {
+        triggerElementRef.current.focus();
+      }
     };
   }, [isOpen, onClose]);
 
@@ -178,6 +183,8 @@ export default function TutorialModal({
           </span>
           <button
             onClick={onClose}
+            title="Close tutorial"
+            aria-label="Close tutorial"
             className="rounded-lg p-1.5 text-slate-400 hover:bg-[#152e4a] hover:text-white"
           >
             <X className="h-4 w-4" />

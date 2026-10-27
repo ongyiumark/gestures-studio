@@ -195,11 +195,15 @@ export default function HandPoseStudioPage() {
     };
   }, [classes, samples, trainedModelRecord, hydrated]);
 
-  // Clean up any lingering timers on unmount
+  // Clean up any lingering timers and TF.js model on unmount
   useEffect(() => {
     return () => {
       if (maxWaitTimerRef.current) clearTimeout(maxWaitTimerRef.current);
       if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+      if (tfModelRef.current) {
+        tfModelRef.current.dispose();
+        tfModelRef.current = null;
+      }
     };
   }, []);
 
@@ -600,6 +604,7 @@ export default function HandPoseStudioPage() {
             <button
               onClick={handleToggleQuickGuide}
               title="Dismiss Quick Studio Guide"
+              aria-label="Dismiss Quick Studio Guide"
               className="rounded-lg p-1.5 text-slate-400 hover:bg-[#1a3857] hover:text-white transition"
             >
               <X className="h-4 w-4" />

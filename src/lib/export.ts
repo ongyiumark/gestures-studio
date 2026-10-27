@@ -11,6 +11,7 @@ import {
   formatHandAnnotationsForExport,
   getClassColor,
   LANDMARK_NAMES,
+  sortDetectedHands,
 } from "@/lib/landmarks";
 import { base64ToUint8Array } from "@/lib/classifier";
 
@@ -52,14 +53,17 @@ export function buildLandmarksCsvString(samples: CapturedSample[]): string {
 
   for (const sample of samples) {
     if (!sample.hands || sample.hands.length === 0) continue;
-    const primary = sample.hands[0];
-    const normVec = extractFeatureVector(sample.hands) || new Array(FEATURE_VECTOR_SIZE).fill(0);
+    const validHands = sample.hands.filter((h) => h.landmarks && h.landmarks.length >= 21);
+    if (validHands.length === 0) continue;
+    const sortedHands = sortDetectedHands(validHands);
+    const primary = sortedHands[0];
+    const normVec = extractFeatureVector(sortedHands) || new Array(FEATURE_VECTOR_SIZE).fill(0);
 
     const row: (string | number)[] = [
       sanitizeCsvField(sample.id),
       sanitizeCsvField(sample.className),
       sample.timestamp,
-      sample.hands.length,
+      validHands.length,
       primary.handedness,
       Number(primary.score.toFixed(4)),
     ];
@@ -152,9 +156,11 @@ export function exportLandmarksCsv(
   samples: CapturedSample[],
   datasetName = "handpose-landmarks"
 ) {
+  const safeName =
+    datasetName.trim().replace(/[^a-zA-Z0-9_-]/g, "-") || "handpose-landmarks";
   const csv = buildLandmarksCsvString(samples);
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
-  saveAs(blob, `${datasetName}-${Date.now().toString().slice(-6)}.csv`);
+  saveAs(blob, `${safeName}-${Date.now().toString().slice(-6)}.csv`);
 }
 
 /**
@@ -165,9 +171,11 @@ export function exportDatasetJson(
   samples: CapturedSample[],
   datasetName = "handpose-workspace"
 ) {
+  const safeName =
+    datasetName.trim().replace(/[^a-zA-Z0-9_-]/g, "-") || "handpose-workspace";
   const payload = {
     version: "2.0",
-    name: datasetName,
+    name: safeName,
     exportedAt: Date.now(),
     classes,
     samples,
@@ -175,7 +183,7 @@ export function exportDatasetJson(
   const blob = new Blob([JSON.stringify(payload, null, 2)], {
     type: "application/json;charset=utf-8",
   });
-  saveAs(blob, `${datasetName}-${Date.now().toString().slice(-6)}.json`);
+  saveAs(blob, `${safeName}-${Date.now().toString().slice(-6)}.json`);
 }
 
 /**

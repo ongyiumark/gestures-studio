@@ -173,6 +173,7 @@ function Navbar({
           <button
             onClick={onOpenTutorial}
             title="Open guided walkthrough tutorial"
+            aria-label="Open guided walkthrough tutorial"
             className="flex items-center gap-1.5 rounded-lg border border-gold-300/40 bg-gold-200/15 px-2.5 py-1.5 text-xs font-semibold text-gold-100 transition hover:bg-gold-200/25 active:scale-95"
           >
             <BookOpen className="h-3.5 w-3.5" />
@@ -182,6 +183,7 @@ function Navbar({
           <button
             onClick={onLoadDemoData}
             title="Populate 4 sample hand pose classes with 3D landmarks to test training immediately"
+            aria-label="Populate 4 sample hand pose classes with 3D landmarks"
             className="flex items-center gap-1.5 rounded-lg border border-white/15 bg-white/10 px-2.5 py-1.5 text-xs font-medium text-slate-100 transition hover:bg-white/20 active:scale-95"
           >
             <Sparkles className="h-3.5 w-3.5 text-gold-200" />
@@ -191,6 +193,7 @@ function Navbar({
           <button
             onClick={onOpenHub}
             title="View saved browser datasets, models, and export options"
+            aria-label="View saved browser datasets, models, and export options"
             className="flex items-center gap-1.5 rounded-lg border border-ocean-600/70 bg-[#163554]/90 px-2.5 py-1.5 text-xs font-medium text-slate-100 transition hover:bg-[#1f456c] active:scale-95"
           >
             <FolderArchive className="h-3.5 w-3.5 text-sky-300" />
@@ -201,6 +204,7 @@ function Navbar({
             onClick={onQuickDownloadZip}
             disabled={totalSamples === 0}
             title="Download complete dataset as a ZIP (images + 3D landmarks + CSV)"
+            aria-label="Download complete dataset as a ZIP archive"
             className="flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-terracotta-500 to-terracotta-600 px-3 py-1.5 text-xs font-bold text-white shadow-sm shadow-terracotta-950/40 transition hover:from-terracotta-400 hover:to-terracotta-500 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
           >
             <Download className="h-3.5 w-3.5" />
@@ -222,6 +226,7 @@ function Navbar({
           <button
             onClick={onToggleHelp}
             title="Toggle Quick Studio Guide"
+            aria-label="Toggle Quick Studio Guide"
             className="flex h-8 w-8 items-center justify-center rounded-lg border border-ocean-700/60 bg-[#0e2135]/80 text-sky-200 transition hover:bg-[#163554] hover:text-white"
           >
             <HelpCircle className="h-4 w-4" />

@@ -431,8 +431,8 @@ export default function CameraStage({
             const currentFps = timestamps.length;
 
             onHandsDetectedRef.current(detected, currentFps);
-            if (videoPaused) setVideoPaused(false);
-            if (lastDetectError) setLastDetectError(null);
+            setVideoPaused((prev) => (prev ? false : prev));
+            setLastDetectError((prev) => (prev ? null : prev));
 
             // Throttle React state telemetry to ~10 FPS to keep main thread fast and prevent frame drops
             if (nowMs - lastStateUpdateRef.current >= 100) {
@@ -441,6 +441,10 @@ export default function CameraStage({
               setFpsVal(currentFps);
               const currentRes = `${vw}×${vh}`;
               setVideoStatus((prev) => (prev === currentRes ? prev : currentRes));
+              if (vw > 0 && vh > 0) {
+                const isPortrait = vh > vw;
+                setIsPortraitStream((prev) => (prev !== isPortrait ? isPortrait : prev));
+              }
             }
 
             // Real-time canvas skeleton rendering (60 FPS, direct 2D context)
@@ -464,13 +468,13 @@ export default function CameraStage({
           }
         }
       } else if (canvas) {
-        if (cameraOn && video) {
+        if (cameraOn && video && video.srcObject && video.readyState >= 1) {
           if (video.paused) {
             setVideoPaused((prev) => (prev ? prev : true));
-          } else if (video.readyState < 2) {
-            const nextStatus = `Connecting (ready: ${video.readyState})`;
-            setVideoStatus((prev) => (prev === nextStatus ? prev : nextStatus));
           }
+        } else if (cameraOn && video && video.readyState < 2) {
+          const nextStatus = `Connecting (ready: ${video.readyState})`;
+          setVideoStatus((prev) => (prev === nextStatus ? prev : nextStatus));
         }
         const ctx = canvas.getContext("2d");
         ctx?.clearRect(0, 0, canvas.width, canvas.height);
@@ -488,7 +492,7 @@ export default function CameraStage({
   }, [cameraOn, showSkeleton, activeClass?.color, mirrored]);
 
   // Capture a single frame + current 21-keypoint hand landmarks
-  const captureNow = useCallback((): boolean => {
+  const captureNow = useCallback((skipFlash: boolean = false): boolean => {
     if (!activeClass) {
       setCaptureNotice("Select or create a hand pose class first!");
       setTimeout(() => setCaptureNotice(null), 2200);
@@ -534,8 +538,10 @@ export default function CameraStage({
     };
 
     onCaptureSample(sample);
-    setFlashEffect(true);
-    setTimeout(() => setFlashEffect(false), 120);
+    if (!skipFlash) {
+      setFlashEffect(true);
+      setTimeout(() => setFlashEffect(false), 120);
+    }
     return true;
   }, [activeClass, cameraOn, onCaptureSample]);
 
@@ -601,7 +607,7 @@ export default function CameraStage({
     if (!isBursting) return;
     const interval = setInterval(() => {
       if (latestHandsRef.current.length > 0) {
-        const ok = captureNow();
+        const ok = captureNow(true);
         if (ok) {
           setBurstCount((prev) => {
             const next = prev + 1;
@@ -652,6 +658,7 @@ export default function CameraStage({
           <button
             onClick={() => setMirrored((m) => !m)}
             title="Mirror Video Feed"
+            aria-label="Mirror Video Feed"
             className={`flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-medium transition ${
               mirrored
                 ? "bg-[#183959] text-sky-200 border border-ocean-500/50"
@@ -665,6 +672,7 @@ export default function CameraStage({
           <button
             onClick={() => setShowSkeleton((s) => !s)}
             title="Toggle 21-Keypoint Skeleton Overlay"
+            aria-label={showSkeleton ? "Hide 21-Keypoint Skeleton Overlay" : "Show 21-Keypoint Skeleton Overlay"}
             className={`flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-medium transition ${
               showSkeleton
                 ? "bg-[#183959] text-sky-200 border border-ocean-500/50"
@@ -682,6 +690,7 @@ export default function CameraStage({
           <button
             onClick={() => setShowSettings((s) => !s)}
             title="Tracking Settings (Confidence, Engine, Hands)"
+            aria-label="Tracking Settings (Confidence, Engine, Hands)"
             className={`flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-medium transition ${
               showSettings
                 ? "bg-amber-500/20 text-gold-200 border border-amber-500/40"
@@ -701,6 +710,7 @@ export default function CameraStage({
               }
             }}
             title={cameraOn ? "Turn Off Camera" : "Turn On Camera"}
+            aria-label={cameraOn ? "Turn Off Camera" : "Turn On Camera"}
             className={`flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-medium transition ${
               cameraOn
                 ? "bg-rose-500/15 text-rose-300 border border-rose-500/30 hover:bg-rose-500/25"
@@ -1145,7 +1155,7 @@ export default function CameraStage({
 
         <div className="grid grid-cols-1 min-[380px]:grid-cols-3 sm:flex sm:flex-wrap items-center gap-2 w-full sm:w-auto">
           <button
-            onClick={captureNow}
+            onClick={() => captureNow()}
             disabled={!cameraOn || !activeClass}
             className="flex items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-terracotta-500 to-terracotta-600 px-3 sm:px-4 py-2.5 text-xs font-bold text-white shadow-md shadow-terracotta-950/40 transition hover:from-terracotta-400 hover:to-terracotta-500 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
           >

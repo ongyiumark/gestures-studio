@@ -141,8 +141,11 @@ function SamplePreviewModal({
 }: SamplePreviewModalProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const modalRef = useRef<HTMLDivElement | null>(null);
+  const triggerElementRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
+    triggerElementRef.current = document.activeElement as HTMLElement | null;
+
     const modal = modalRef.current;
     if (modal) {
       const focusables = modal.querySelectorAll<HTMLElement>(
@@ -184,6 +187,9 @@ function SamplePreviewModal({
     return () => {
       document.body.style.overflow = prevOverflow;
       window.removeEventListener("keydown", handleKeyDown);
+      if (triggerElementRef.current) {
+        triggerElementRef.current.focus();
+      }
     };
   }, [onClose]);
 
@@ -220,7 +226,7 @@ function SamplePreviewModal({
       <div
         ref={modalRef}
         onClick={(e) => e.stopPropagation()}
-        className="relative flex flex-col w-full max-w-2xl overflow-hidden rounded-2xl border border-ocean-600/70 bg-[#0d1c2d] shadow-2xl animate-in zoom-in-95 duration-150"
+        className="relative flex flex-col w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl border border-ocean-600/70 bg-[#0d1c2d] shadow-2xl animate-in zoom-in-95 duration-150"
       >
         {/* Modal Header */}
         <div className="flex items-center justify-between border-b border-ocean-700/60 bg-[#12263a] px-4 py-3">
@@ -242,6 +248,8 @@ function SamplePreviewModal({
 
           <button
             onClick={onClose}
+            title="Close sample preview"
+            aria-label="Close sample preview"
             className="rounded-lg p-1.5 text-slate-400 hover:bg-[#1a344e] hover:text-white transition"
           >
             <X className="h-5 w-5" />
