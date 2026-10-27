@@ -152,12 +152,13 @@ function TrainerPanel({
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 mb-3">
         <button
           type="button"
+          disabled={isTraining}
           onClick={() => onChangeConfig({ ...config, classifierType: "mlp" })}
           className={`flex items-center gap-2.5 rounded-xl border p-2.5 text-left transition ${
             config.classifierType === "mlp"
               ? "border-ocean-500/80 bg-[#163554]/90 text-white shadow-sm"
               : "border-ocean-800/60 bg-[#0a1624]/70 text-slate-300 hover:border-ocean-700"
-          }`}
+          } disabled:opacity-50 disabled:cursor-not-allowed`}
         >
           <Cpu className="h-4 w-4 text-ocean-400 shrink-0" />
           <div>
@@ -170,12 +171,13 @@ function TrainerPanel({
 
         <button
           type="button"
+          disabled={isTraining}
           onClick={() => onChangeConfig({ ...config, classifierType: "knn" })}
           className={`flex items-center gap-2.5 rounded-xl border p-2.5 text-left transition ${
             config.classifierType === "knn"
               ? "border-terracotta-500/70 bg-[#1c2e42] text-white shadow-sm"
               : "border-ocean-800/60 bg-[#0a1624]/70 text-slate-300 hover:border-ocean-700"
-          }`}
+          } disabled:opacity-50 disabled:cursor-not-allowed`}
         >
           <Sparkles className="h-4 w-4 text-gold-300 shrink-0" />
           <div>
@@ -191,35 +193,41 @@ function TrainerPanel({
       {showAdvanced && config.classifierType === "mlp" && (
         <div className="mb-3 grid grid-cols-2 gap-3 rounded-xl border border-ocean-700/60 bg-[#081320] p-3 text-xs sm:grid-cols-4">
           <div>
-            <label className="block text-[11px] text-slate-400 mb-1">
+            <label htmlFor="trainer-epochs" className="block text-[11px] text-slate-400 mb-1">
               Epochs ({config.epochs})
             </label>
             <input
+              id="trainer-epochs"
+              aria-label="Training epochs"
               type="range"
               min={15}
               max={120}
               step={5}
+              disabled={isTraining}
               value={config.epochs}
               onChange={(e) =>
                 onChangeConfig({ ...config, epochs: Number(e.target.value) })
               }
-              className="w-full accent-terracotta-500"
+              className="w-full accent-terracotta-500 disabled:opacity-50 disabled:cursor-not-allowed"
             />
           </div>
 
           <div>
-            <label className="block text-[11px] text-slate-400 mb-1">
+            <label htmlFor="trainer-learning-rate" className="block text-[11px] text-slate-400 mb-1">
               Learning Rate
             </label>
             <select
+              id="trainer-learning-rate"
+              aria-label="Optimizer learning rate"
               value={config.learningRate}
+              disabled={isTraining}
               onChange={(e) =>
                 onChangeConfig({
                   ...config,
                   learningRate: Number(e.target.value),
                 })
               }
-              className="w-full rounded-lg border border-ocean-700/60 bg-[#0a1725] px-2 py-1 text-xs text-white"
+              className="w-full rounded-lg border border-ocean-700/60 bg-[#0a1725] px-2 py-1 text-xs text-white disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <option value={0.001}>0.001 (Slow/Stable)</option>
               <option value={0.005}>0.005 (Balanced)</option>
@@ -228,18 +236,21 @@ function TrainerPanel({
           </div>
 
           <div>
-            <label className="block text-[11px] text-slate-400 mb-1">
+            <label htmlFor="trainer-hidden-units" className="block text-[11px] text-slate-400 mb-1">
               Hidden Units
             </label>
             <select
+              id="trainer-hidden-units"
+              aria-label="Dense layer hidden units"
               value={config.hiddenUnits}
+              disabled={isTraining}
               onChange={(e) =>
                 onChangeConfig({
                   ...config,
                   hiddenUnits: Number(e.target.value),
                 })
               }
-              className="w-full rounded-lg border border-ocean-700/60 bg-[#0a1725] px-2 py-1 text-xs text-white"
+              className="w-full rounded-lg border border-ocean-700/60 bg-[#0a1725] px-2 py-1 text-xs text-white disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <option value={32}>32 units</option>
               <option value={64}>64 units</option>
@@ -248,9 +259,12 @@ function TrainerPanel({
           </div>
 
           <div className="flex flex-col justify-center">
-            <label className="flex cursor-pointer items-center gap-2 text-xs text-slate-200">
+            <label className={`flex items-center gap-2 text-xs text-slate-200 ${isTraining ? "cursor-not-allowed opacity-50" : "cursor-pointer"}`}>
               <input
+                id="trainer-augmentation"
+                aria-label="Enable 5x 3D data augmentation"
                 type="checkbox"
+                disabled={isTraining}
                 checked={config.useAugmentation}
                 onChange={(e) =>
                   onChangeConfig({
@@ -258,7 +272,7 @@ function TrainerPanel({
                     useAugmentation: e.target.checked,
                   })
                 }
-                className="rounded accent-terracotta-500"
+                className="rounded accent-terracotta-500 disabled:cursor-not-allowed"
               />
               <span>5x 3D Augmentation</span>
             </label>

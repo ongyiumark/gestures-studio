@@ -86,6 +86,12 @@ export default function TutorialModal({
   const [currentIdx, setCurrentIdx] = useState(0);
 
   useEffect(() => {
+    if (isOpen) {
+      setCurrentIdx(0);
+    }
+  }, [isOpen]);
+
+  useEffect(() => {
     if (!isOpen) return;
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();

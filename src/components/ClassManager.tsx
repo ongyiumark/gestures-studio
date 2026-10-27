@@ -54,70 +54,65 @@ const SampleCard = React.memo(function SampleCard({
   const handCount = sample.hands?.length || 0;
 
   return (
-    <div
-      role="button"
-      tabIndex={0}
-      onClick={() => onPreview(sample)}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          onPreview(sample);
-        }
-      }}
-      className="group relative aspect-[4/3] overflow-hidden rounded-xl border border-ocean-800/60 bg-[#08121d] shadow-sm transition hover:border-ocean-400 hover:scale-[1.02] focus:outline-none focus:ring-2 focus:ring-ocean-400 cursor-pointer"
-      title="Click to blow up & preview sample"
-      aria-label={`Preview sample for ${sample.className}`}
-    >
-      {sample.imageDataUrl ? (
-        <Image
-          src={sample.imageDataUrl}
-          alt={sample.className}
-          fill
-          unoptimized
-          sizes="160px"
-          className="object-cover"
-        />
-      ) : (
-        <div className="flex h-full w-full items-center justify-center bg-[#0d1a29] text-[10px] text-slate-400">
-          3D Landmarks
-        </div>
-      )}
-
-      <canvas
-        ref={canvasRef}
-        width={160}
-        height={120}
-        className="pointer-events-none absolute inset-0 h-full w-full object-cover"
-      />
-
-      {/* Hover Zoom Hint */}
-      <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/25 opacity-0 transition group-hover:opacity-100">
-        <div className="rounded-full bg-[#0d2238]/90 p-2 text-sky-200 shadow-lg border border-ocean-500/50">
-          <ZoomIn className="h-4 w-4" />
-        </div>
-      </div>
-
-      {/* Handedness & Confidence Badge */}
-      {primaryHand && (
-        <div className="pointer-events-none absolute bottom-1.5 left-1.5 flex items-center gap-1 rounded bg-[#071320]/90 px-1.5 py-0.5 text-[10px] font-medium text-slate-200 backdrop-blur-sm">
-          <span
-            className="h-1.5 w-1.5 rounded-full"
-            style={{ backgroundColor: accentColor }}
+    <div className="group relative aspect-[4/3] overflow-hidden rounded-xl border border-ocean-800/60 bg-[#08121d] shadow-sm transition hover:border-ocean-400 hover:scale-[1.02]">
+      <button
+        type="button"
+        onClick={() => onPreview(sample)}
+        className="absolute inset-0 h-full w-full text-left focus:outline-none focus:ring-2 focus:ring-ocean-400 rounded-xl"
+        title="Click to blow up & preview sample"
+        aria-label={`Preview sample for ${sample.className}`}
+      >
+        {sample.imageDataUrl ? (
+          <Image
+            src={sample.imageDataUrl}
+            alt={sample.className}
+            fill
+            unoptimized
+            sizes="160px"
+            className="object-cover"
           />
-          <span>
-            {handCount > 1
-              ? `2H • ${sample.hands.map((h) => h.handedness[0]).join("+")}`
-              : `${primaryHand.handedness[0]} • ${(primaryHand.score * 100).toFixed(0)}%`}
-          </span>
+        ) : (
+          <div className="flex h-full w-full items-center justify-center bg-[#0d1a29] text-[10px] text-slate-400">
+            3D Landmarks
+          </div>
+        )}
+
+        {showOverlay && sample.hands && sample.hands.length > 0 && (
+          <canvas
+            ref={canvasRef}
+            width={sample.width || 320}
+            height={sample.height || 240}
+            className="pointer-events-none absolute inset-0 h-full w-full object-cover"
+          />
+        )}
+
+        {/* Hover Zoom Hint */}
+        <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/25 opacity-0 transition group-hover:opacity-100">
+          <div className="rounded-full bg-[#0d2238]/90 p-2 text-sky-200 shadow-lg border border-ocean-500/50">
+            <ZoomIn className="h-4 w-4" />
+          </div>
         </div>
-      )}
+
+        {/* Handedness & Confidence Badge */}
+        {primaryHand && (
+          <div className="pointer-events-none absolute bottom-1.5 left-1.5 flex items-center gap-1 rounded bg-[#071320]/90 px-1.5 py-0.5 text-[10px] font-medium text-slate-200 backdrop-blur-sm">
+            <span
+              className="h-1.5 w-1.5 rounded-full"
+              style={{ backgroundColor: accentColor }}
+            />
+            <span>
+              {handCount > 1
+                ? `2H • ${sample.hands.map((h) => h.handedness[0]).join("+")}`
+                : `${primaryHand.handedness[0]} • ${(primaryHand.score * 100).toFixed(0)}%`}
+            </span>
+          </div>
+        )}
+      </button>
 
       {/* Delete Sample Button */}
       <button
-        onClick={(e) => {
-          e.stopPropagation();
-          onDelete(sample.id);
-        }}
+        type="button"
+        onClick={() => onDelete(sample.id)}
         title="Delete sample"
         aria-label="Delete sample"
         className="absolute top-1.5 right-1.5 z-10 flex h-6 w-6 items-center justify-center rounded-md bg-terracotta-700/90 text-white opacity-100 sm:opacity-0 sm:group-hover:opacity-100 focus:opacity-100 focus:outline-none focus:ring-2 focus:ring-white shadow transition hover:bg-terracotta-600 active:scale-95"
@@ -435,51 +430,49 @@ function ClassManager({
             return (
               <div
                 key={cls.name}
-                role="button"
-                tabIndex={isEditing ? -1 : 0}
-                aria-pressed={isSelected}
-                onClick={() => !isEditing && onSelectClass(cls.name)}
-                onKeyDown={(e) => {
-                  if (!isEditing && (e.key === "Enter" || e.key === " ")) {
-                    e.preventDefault();
-                    onSelectClass(cls.name);
-                  }
-                }}
-                className={`group flex cursor-pointer items-center justify-between gap-2 rounded-xl border p-2.5 transition focus:outline-none focus:ring-2 focus:ring-ocean-400 ${
+                className={`group flex items-center justify-between gap-2 rounded-xl border p-2.5 transition ${
                   isSelected
                     ? "border-terracotta-500/70 bg-[#162e47] shadow-sm shadow-terracotta-950/20"
                     : "border-ocean-800/60 bg-[#0a1624]/80 hover:border-ocean-700"
                 }`}
               >
-                <div className="flex min-w-0 flex-1 items-center gap-2.5">
-                  <span
-                    className="h-3 w-3 shrink-0 rounded-full shadow-sm"
-                    style={{ backgroundColor: cls.color }}
-                  />
-                  {isEditing ? (
-                    <div
-                      className="flex flex-1 items-center gap-1"
-                      onClick={(e) => e.stopPropagation()}
+                {isEditing ? (
+                  <div className="flex flex-1 items-center gap-1">
+                    <span
+                      className="h-3 w-3 shrink-0 rounded-full shadow-sm"
+                      style={{ backgroundColor: cls.color }}
+                    />
+                    <input
+                      type="text"
+                      value={editValue}
+                      onChange={(e) => setEditValue(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") commitRename(cls.name);
+                        if (e.key === "Escape") setEditingClass(null);
+                      }}
+                      autoFocus
+                      className="w-full rounded border border-ocean-500 bg-[#091522] px-2 py-0.5 text-xs text-white focus:outline-none"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => commitRename(cls.name)}
+                      className="rounded p-1 text-emerald-400 hover:bg-[#16304d]"
+                      aria-label="Confirm rename"
                     >
-                      <input
-                        type="text"
-                        value={editValue}
-                        onChange={(e) => setEditValue(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") commitRename(cls.name);
-                          if (e.key === "Escape") setEditingClass(null);
-                        }}
-                        autoFocus
-                        className="w-full rounded border border-ocean-500 bg-[#091522] px-2 py-0.5 text-xs text-white focus:outline-none"
-                      />
-                      <button
-                        onClick={() => commitRename(cls.name)}
-                        className="rounded p-1 text-emerald-400 hover:bg-[#16304d]"
-                      >
-                        <Check className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
-                  ) : (
+                      <Check className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => onSelectClass(cls.name)}
+                    aria-pressed={isSelected}
+                    className="flex min-w-0 flex-1 items-center gap-2.5 text-left focus:outline-none focus:ring-2 focus:ring-ocean-400 rounded-lg p-0.5 cursor-pointer"
+                  >
+                    <span
+                      className="h-3 w-3 shrink-0 rounded-full shadow-sm"
+                      style={{ backgroundColor: cls.color }}
+                    />
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-1.5">
                         <span className="truncate text-xs font-bold text-white">
@@ -495,25 +488,26 @@ function ClassManager({
                         {count} {count === 1 ? "sample" : "samples"}
                       </div>
                     </div>
-                  )}
-                </div>
+                  </button>
+                )}
 
                 {/* Class Actions */}
                 {!isEditing && (
-                  <div
-                    className="flex items-center gap-1 opacity-70 group-hover:opacity-100"
-                    onClick={(e) => e.stopPropagation()}
-                  >
+                  <div className="flex items-center gap-1 opacity-70 group-hover:opacity-100">
                     <button
+                      type="button"
                       onClick={() => startRename(cls.name)}
                       title="Rename class"
+                      aria-label={`Rename ${cls.name}`}
                       className="rounded-lg p-1.5 text-slate-400 hover:bg-[#16304d] hover:text-white"
                     >
                       <Edit3 className="h-3.5 w-3.5" />
                     </button>
                     <button
+                      type="button"
                       onClick={() => onDeleteClass(cls.name)}
                       title="Delete class and its samples"
+                      aria-label={`Delete class ${cls.name}`}
                       className="rounded-lg p-1.5 text-slate-400 hover:bg-terracotta-500/20 hover:text-terracotta-300"
                     >
                       <Trash2 className="h-3.5 w-3.5" />

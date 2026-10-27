@@ -207,32 +207,45 @@ export default function HandPoseStudioPage() {
     classes.find((c) => c.name === activeClassName) || classes[0] || null;
 
   // Class & Sample handlers
-  const handleAddClass = (name: string) => {
-    const exists = classes.some(
-      (c) => c.name.toLowerCase() === name.toLowerCase()
+  const handleAddClass = useCallback((name: string) => {
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    const currentClasses = latestStateRef.current.classes;
+    const existing = currentClasses.find(
+      (c) => c.name.toLowerCase() === trimmed.toLowerCase()
     );
-    if (exists) {
-      setActiveClassName(
-        classes.find((c) => c.name.toLowerCase() === name.toLowerCase())!.name
-      );
+    if (existing) {
+      setActiveClassName(existing.name);
       return;
     }
-    const newCls: PoseClassMeta = {
-      name,
-      color: getClassColor(classes.length),
-      createdAt: Date.now(),
-    };
-    setClasses((prev) => [...prev, newCls]);
-    setActiveClassName(name);
-  };
+    setClasses((prev) => [
+      ...prev,
+      {
+        name: trimmed,
+        color: getClassColor(prev.length),
+        createdAt: Date.now(),
+      },
+    ]);
+    setActiveClassName(trimmed);
+  }, []);
 
-  const handleRenameClass = (oldName: string, newName: string) => {
+  const clearActiveModel = useCallback(() => {
+    setTrainedModelRecord(null);
+    setTrainingProgress([]);
+    setLivePrediction(null);
+    if (tfModelRef.current) {
+      tfModelRef.current.dispose();
+      tfModelRef.current = null;
+    }
+  }, []);
+
+  const handleRenameClass = useCallback((oldName: string, newName: string) => {
     const trimmed = newName.trim();
     if (!trimmed || trimmed === oldName) return;
 
-    // Check if the new name collides with another existing class
-    const exists = classes.some(
-      (c) => 
+    const currentClasses = latestStateRef.current.classes;
+    const exists = currentClasses.some(
+      (c) =>
         c.name.toLowerCase() === trimmed.toLowerCase() &&
         c.name.toLowerCase() !== oldName.toLowerCase()
     );
@@ -244,42 +257,31 @@ export default function HandPoseStudioPage() {
     setClasses((prev) =>
       prev.map((c) => (c.name === oldName ? { ...c, name: trimmed } : c))
     );
+
     setSamples((prev) =>
       prev.map((s) =>
         s.className === oldName ? { ...s, className: trimmed } : s
       )
     );
-    if (activeClassName === oldName) {
-      setActiveClassName(trimmed);
-    }
 
-    // Keep active model class labels in sync if model was trained on old name
-    if (trainedModelRecord && trainedModelRecord.classes.includes(oldName)) {
-      setTrainedModelRecord((prev) => 
-        prev 
-          ? {
-            ...prev,
-            classes: prev.classes.map((cls) =>
-              cls === oldName ? trimmed : cls
-            )
-          }
-          : null
-      )
-    }
-  };
+    setActiveClassName((prev) => (prev === oldName ? trimmed : prev));
 
-  const clearActiveModel = () => {
-    setTrainedModelRecord(null);
-    setTrainingProgress([]);
-    setLivePrediction(null);
-    if (tfModelRef.current) {
-      tfModelRef.current.dispose();
-      tfModelRef.current = null;
-    }
-  };
+    // Keep active model class labels & exemplars in sync if model was trained on old name
+    setTrainedModelRecord((prev) => {
+      if (!prev || !prev.classes.includes(oldName)) return prev;
+      return {
+        ...prev,
+        classes: prev.classes.map((cls) => (cls === oldName ? trimmed : cls)),
+        knnExemplars: prev.knnExemplars?.map((ex) =>
+          ex.className === oldName ? { ...ex, className: trimmed } : ex
+        ),
+      };
+    });
+  }, []);
 
-  const handleDeleteClass = (name: string) => {
-    const sampleCount = samples.filter((s) => s.className === name).length;
+  const handleDeleteClass = useCallback((name: string) => {
+    const { samples: currentSamples, classes: currentClasses, trainedModelRecord: currentModel } = latestStateRef.current;
+    const sampleCount = currentSamples.filter((s) => s.className === name).length;
     const confirmMessage =
       sampleCount > 0
         ? `Delete class "${name}" and its ${sampleCount} captured ${sampleCount === 1 ? "sample" : "samples"}? This cannot be undone.`
@@ -288,46 +290,43 @@ export default function HandPoseStudioPage() {
       return;
     }
 
-    setClasses((prev) => {
-      const next = prev.filter((c) => c.name !== name);
-      if (activeClassName === name) {
-        setActiveClassName(next[0]?.name || null);
-      }
-      return next;
-    });
+    const nextClasses = currentClasses.filter((c) => c.name !== name);
     setSamples((prev) => prev.filter((s) => s.className !== name));
-    // If the active model was trained on this deleted class, invalidate it
-    if (trainedModelRecord?.classes.includes(name)) {
+    setClasses(nextClasses);
+    setActiveClassName((curr) => (curr === name ? nextClasses[0]?.name || null : curr));
+
+    if (currentModel?.classes.includes(name)) {
       clearActiveModel();
     }
-  };
+  }, [clearActiveModel]);
 
   const handleCaptureSample = useCallback((sample: CapturedSample) => {
     setSamples((prev) => [...prev, sample]);
   }, []);
 
-  const handleDeleteSample = (id: string) => {
+  const handleDeleteSample = useCallback((id: string) => {
     setSamples((prev) => prev.filter((s) => s.id !== id));
-  };
+  }, []);
 
-  const handleClearWorkspace = () => {
-    if (samples.length > 0 || trainedModelRecord) {
-      const message = `Are you sure you want to reset the workspace? All ${samples.length} captured ${samples.length === 1 ? "sample" : "samples"} and the active model will be cleared. This cannot be undone.`;
+  const handleClearWorkspace = useCallback(() => {
+    const currentSamples = latestStateRef.current.samples;
+    if (currentSamples.length > 0) {
+      const message = `Are you sure you want to reset the workspace? All ${currentSamples.length} captured ${currentSamples.length === 1 ? "sample" : "samples"} and the active model will be cleared. This cannot be undone.`;
       if (typeof window !== "undefined" && !window.confirm(message)) {
         return;
       }
     }
-    setSamples([]);
     clearActiveModel();
-  };
+    setSamples([]);
+  }, [clearActiveModel]);
 
-  const handleLoadDemoDataset = () => {
+  const handleLoadDemoDataset = useCallback(() => {
     clearActiveModel();
     const demo = generateDemoDataset(8);
     setClasses(demo.classes);
     setSamples(demo.samples);
     setActiveClassName(demo.classes[0].name);
-  };
+  }, [clearActiveModel]);
 
   // Memoize extracted feature vectors for all samples in the workspace
   // so k-NN does not re-extract features on every video frame
@@ -385,9 +384,11 @@ export default function HandPoseStudioPage() {
         );
         setLivePrediction(pred);
       } else if (
-        trainingConfig.classifierType === "knn" &&
+        (trainedModelRecord?.classifierType === "knn" ||
+          trainingConfig.classifierType === "knn") &&
         workspaceExemplars.length >= 4
       ) {
+        // Keep k-NN active live with latest workspace exemplars
         const pred = predictWithKNN(workspaceExemplars, detectedHands, classes, 5);
         setLivePrediction(pred);
       } else {
@@ -396,6 +397,18 @@ export default function HandPoseStudioPage() {
     },
     [trainedModelRecord, trainingConfig.classifierType, workspaceExemplars, classes]
   );
+
+  const handleExportModelZip = useCallback(() => {
+    if (trainedModelRecord) {
+      exportTrainedModelZip(trainedModelRecord);
+    }
+  }, [trainedModelRecord]);
+
+  const handleSaveModelLocally = useCallback(async () => {
+    if (trainedModelRecord) {
+      await saveModelLocally(trainedModelRecord);
+    }
+  }, [trainedModelRecord]);
 
   // Train classifier in browser
   const handleStartTraining = async () => {
@@ -605,7 +618,10 @@ export default function HandPoseStudioPage() {
             onHandsDetected={handleHandsDetected}
             onModelStatusChange={setModelReady}
             livePrediction={livePrediction}
-            classifierActive={Boolean(trainedModelRecord)}
+            classifierActive={
+              Boolean(trainedModelRecord) ||
+              (trainingConfig.classifierType === "knn" && workspaceExemplars.length >= 4)
+            }
           />
 
           {/* Helpful Starter Callout when 0 samples exist */}
@@ -729,16 +745,8 @@ export default function HandPoseStudioPage() {
               trainedModel={trainedModelRecord}
               livePrediction={livePrediction}
               onStartTraining={handleStartTraining}
-              onExportModelZip={() => {
-                if (trainedModelRecord) {
-                  exportTrainedModelZip(trainedModelRecord);
-                }
-              }}
-              onSaveModelLocally={async () => {
-                if (trainedModelRecord) {
-                  await saveModelLocally(trainedModelRecord);
-                }
-              }}
+              onExportModelZip={handleExportModelZip}
+              onSaveModelLocally={handleSaveModelLocally}
             />
           )}
         </div>

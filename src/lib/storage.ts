@@ -197,28 +197,37 @@ export async function loadWorkspaceLocally(): Promise<PersistedWorkspace | null>
 
     // Fallback: check legacy gesture_studio IndexedDB if user previously had data saved
     try {
-      const legacyDb = await openDatabase(LEGACY_DB_NAME);
-      const legacyActive = await new Promise<PersistedWorkspace | null>((resolve, reject) => {
-        const tx = legacyDb.transaction(STORE_WORKSPACE, "readonly");
-        const store = tx.objectStore(STORE_WORKSPACE);
-        const req = store.get("active");
-        req.onsuccess = () => {
-          legacyDb.close();
-          resolve((req.result as PersistedWorkspace) || null);
-        };
-        req.onerror = () => {
-          legacyDb.close();
-          reject(req.error);
-        };
-      });
+      if (typeof window !== "undefined" && window.indexedDB) {
+        if (typeof window.indexedDB.databases === "function") {
+          const existingDbs = await window.indexedDB.databases();
+          const hasLegacy = existingDbs.some((db) => db.name === LEGACY_DB_NAME);
+          if (!hasLegacy) {
+            return active;
+          }
+        }
+        const legacyDb = await openDatabase(LEGACY_DB_NAME);
+        const legacyActive = await new Promise<PersistedWorkspace | null>((resolve, reject) => {
+          const tx = legacyDb.transaction(STORE_WORKSPACE, "readonly");
+          const store = tx.objectStore(STORE_WORKSPACE);
+          const req = store.get("active");
+          req.onsuccess = () => {
+            legacyDb.close();
+            resolve((req.result as PersistedWorkspace) || null);
+          };
+          req.onerror = () => {
+            legacyDb.close();
+            reject(req.error);
+          };
+        });
 
-      if (legacyActive && (legacyActive.classes?.length > 0 || legacyActive.samples?.length > 0)) {
-        await saveWorkspaceLocally(
-          legacyActive.classes,
-          legacyActive.samples,
-          legacyActive.activeModel
-        );
-        return legacyActive;
+        if (legacyActive && (legacyActive.classes?.length > 0 || legacyActive.samples?.length > 0)) {
+          await saveWorkspaceLocally(
+            legacyActive.classes,
+            legacyActive.samples,
+            legacyActive.activeModel
+          );
+          return legacyActive;
+        }
       }
     } catch {
       // Legacy database not present

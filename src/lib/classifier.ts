@@ -21,16 +21,20 @@ export interface PreparedDataset {
   labels: number[];
   classes: string[];
   rawSamplesPerClass: Record<string, number>;
+  valFeatures?: number[][];
+  valLabels?: number[];
 }
 
 /**
- * Extracts normalized 63-D feature vectors from captured samples,
- * optionally applying synthetic jitter/rotation augmentation.
+ * Extracts normalized feature vectors from captured samples.
+ * If validation samples are held out, data augmentation is applied
+ * ONLY to training samples, preventing data leakage between train & validation splits.
  */
 export function prepareTrainingDataset(
   samples: CapturedSample[],
   useAugmentation: boolean,
-  augmentCopies = 4
+  augmentCopies = 4,
+  holdoutValidation = true
 ): PreparedDataset {
   const validSamples = samples.filter(
     (s) => s.hands && s.hands.length > 0 && extractFeatureVector(s.hands) !== null
@@ -42,28 +46,70 @@ export function prepareTrainingDataset(
 
   const features: number[][] = [];
   const labels: number[] = [];
+  const valFeatures: number[][] = [];
+  const valLabels: number[] = [];
   const rawSamplesPerClass: Record<string, number> = {};
 
-  for (const sample of validSamples) {
-    const vec = extractFeatureVector(sample.hands);
-    const labelIdx = classToIndex.get(sample.className);
-    if (!vec || labelIdx === undefined) continue;
+  // Group valid samples by class
+  const samplesByClass = new Map<string, CapturedSample[]>();
+  for (const c of classes) {
+    samplesByClass.set(c, []);
+  }
+  for (const s of validSamples) {
+    samplesByClass.get(s.className)?.push(s);
+  }
 
-    rawSamplesPerClass[sample.className] =
-      (rawSamplesPerClass[sample.className] || 0) + 1;
+  const shouldHoldout = holdoutValidation && validSamples.length >= 12;
 
-    features.push(vec);
-    labels.push(labelIdx);
+  for (const [className, classSamples] of samplesByClass.entries()) {
+    const labelIdx = classToIndex.get(className);
+    if (labelIdx === undefined) continue;
 
-    if (useAugmentation) {
-      for (let i = 0; i < augmentCopies; i++) {
-        features.push(augmentFeatureVector(vec));
-        labels.push(labelIdx);
+    rawSamplesPerClass[className] = classSamples.length;
+
+    let trainClassSamples = classSamples;
+    let valClassSamples: CapturedSample[] = [];
+
+    if (shouldHoldout && classSamples.length >= 4) {
+      const valCount = Math.max(1, Math.floor(classSamples.length * 0.15));
+      trainClassSamples = classSamples.slice(0, classSamples.length - valCount);
+      valClassSamples = classSamples.slice(classSamples.length - valCount);
+    }
+
+    // Process training samples (with augmentation if enabled)
+    for (const sample of trainClassSamples) {
+      const vec = extractFeatureVector(sample.hands);
+      if (!vec) continue;
+
+      features.push(vec);
+      labels.push(labelIdx);
+
+      if (useAugmentation) {
+        for (let i = 0; i < augmentCopies; i++) {
+          features.push(augmentFeatureVector(vec));
+          labels.push(labelIdx);
+        }
       }
+    }
+
+    // Process validation samples (strictly raw unaugmented vectors)
+    for (const sample of valClassSamples) {
+      const vec = extractFeatureVector(sample.hands);
+      if (!vec) continue;
+
+      valFeatures.push(vec);
+      valLabels.push(labelIdx);
     }
   }
 
-  return { features, labels, classes, rawSamplesPerClass };
+  return {
+    features,
+    labels,
+    classes,
+    rawSamplesPerClass,
+    valFeatures: valFeatures.length > 0 ? valFeatures : undefined,
+    valLabels: valLabels.length > 0 ? valLabels : undefined,
+  };
 }
 
 /**
@@ -168,7 +214,26 @@ export async function trainMLPClassifier(
   });
 
   const history: TrainingHistoryPoint[] = [];
-  const validationSplit = shuffledFeatures.length >= 20 ? 0.15 : 0;
+
+  const hasValidationData = Boolean(
+    prepared.valFeatures &&
+    prepared.valFeatures.length > 0 &&
+    prepared.valLabels &&
+    prepared.valLabels.length > 0
+  );
+
+  let valXs: tf.Tensor2D | null = null;
+  let valYs: tf.Tensor | null = null;
+
+  if (hasValidationData && prepared.valFeatures && prepared.valLabels) {
+    valXs = tf.tensor2d(prepared.valFeatures, [
+      prepared.valFeatures.length,
+      inputDim,
+    ]);
+    const valLabelsTensor = tf.tensor1d(prepared.valLabels, "int32");
+    valYs = tf.oneHot(valLabelsTensor, numClasses);
+    valLabelsTensor.dispose();
+  }
 
   // Yield one animation frame so the UI paints the initial training state before computation begins
   await tf.nextFrame();
@@ -178,7 +243,7 @@ export async function trainMLPClassifier(
     await model.fit(xs, ys, {
       epochs: config.epochs,
       batchSize: config.batchSize,
-      validationSplit,
+      validationData: valXs && valYs ? [valXs, valYs] : undefined,
       shuffle: true,
       callbacks: {
         onEpochEnd: async (epoch, logs) => {
@@ -216,6 +281,8 @@ export async function trainMLPClassifier(
   } finally {
     xs.dispose();
     ys.dispose();
+    valXs?.dispose();
+    valYs?.dispose();
     if (!trainedSuccessfully) {
       model.dispose();
     }
@@ -366,8 +433,11 @@ export function predictWithKNN(
 
   const distances = validSamples.map((item) => {
     let sumSq = 0;
-    for (let i = 0; i < queryVec.length; i++) {
-      const diff = queryVec[i] - item.vec[i];
+    const maxDim = Math.max(queryVec.length, item.vec.length, FEATURE_VECTOR_SIZE);
+    for (let i = 0; i < maxDim; i++) {
+      const q = queryVec[i] ?? 0;
+      const v = item.vec[i] ?? 0;
+      const diff = q - v;
       sumSq += diff * diff;
     }
     return {
@@ -431,8 +501,11 @@ export function evaluateKNN(exemplars: KNNExemplar[], k = 5): {
       if (j === i) continue;
       const other = exemplars[j];
       let sumSq = 0;
-      for (let d = 0; d < query.vec.length; d++) {
-        const diff = query.vec[d] - other.vec[d];
+      const maxDim = Math.max(query.vec.length, other.vec.length, FEATURE_VECTOR_SIZE);
+      for (let d = 0; d < maxDim; d++) {
+        const q = query.vec[d] ?? 0;
+        const o = other.vec[d] ?? 0;
+        const diff = q - o;
         sumSq += diff * diff;
       }
       dists.push({ className: other.className, dist: Math.sqrt(sumSq) });
