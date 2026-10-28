@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
-import { Coffee, ExternalLink, Loader2, Moon, Sun, X } from "lucide-react";
+import { Coffee, ExternalLink, Loader2, X } from "lucide-react";
 
 interface KofiModalProps {
   isOpen: boolean;
@@ -15,7 +15,6 @@ export default function KofiModal({
   username = "ongyiumark",
 }: KofiModalProps) {
   const [isLoading, setIsLoading] = useState(true);
-  const [isDarkMode, setIsDarkMode] = useState(true);
   const modalRef = useRef<HTMLDivElement | null>(null);
   const triggerElementRef = useRef<HTMLElement | null>(null);
 
@@ -115,31 +114,6 @@ export default function KofiModal({
           </div>
 
           <div className="flex items-center gap-1.5">
-            {/* Theme Toggle (Dark to match studio, Light for original) */}
-            <button
-              type="button"
-              onClick={() => setIsDarkMode((prev) => !prev)}
-              title={
-                isDarkMode
-                  ? "Switch to original light widget"
-                  : "Switch to dark studio theme"
-              }
-              aria-label="Toggle widget theme"
-              className="flex items-center gap-1 rounded-lg border border-ocean-600/70 bg-[#0e2135]/80 px-2 py-1 text-[11px] font-medium text-sky-200 transition hover:bg-[#163554] hover:text-white"
-            >
-              {isDarkMode ? (
-                <>
-                  <Moon className="h-3 w-3 text-gold-200" />
-                  <span className="text-[10px]">Dark</span>
-                </>
-              ) : (
-                <>
-                  <Sun className="h-3 w-3 text-amber-300" />
-                  <span className="text-[10px]">Light</span>
-                </>
-              )}
-            </button>
-
             {/* Direct External Link */}
             <a
               href={kofiDirectUrl}
@@ -163,23 +137,17 @@ export default function KofiModal({
           </div>
         </div>
 
-        {/* Embedded Ko-fi Widget Container: Sized precisely to 342px, scrollable on shorter tablet viewports */}
+        {/* Embedded Ko-fi Widget Container: Maintained light mode only to preserve creator profile picture integrity */}
         <div
-          className={`relative flex-1 overflow-y-auto overscroll-contain transition-colors duration-200 ${
-            isDarkMode ? "bg-[#0c1a29]" : "bg-[#f5f7f9]"
-          }`}
+          className="relative flex-1 overflow-y-auto overscroll-contain bg-white"
           style={{
             maxHeight: "calc(100dvh - 88px)",
           }}
         >
           {isLoading && (
-            <div
-              className={`absolute inset-0 z-10 flex flex-col items-center justify-center gap-2.5 ${
-                isDarkMode ? "bg-[#0c1a29]" : "bg-[#f5f7f9]"
-              }`}
-            >
-              <Loader2 className="h-7 w-7 animate-spin text-gold-300" />
-              <span className="text-xs font-medium text-sky-200/90">
+            <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-2.5 bg-white">
+              <Loader2 className="h-7 w-7 animate-spin text-ocean-600" />
+              <span className="text-xs font-medium text-slate-600">
                 Loading Ko-fi widget…
               </span>
             </div>
@@ -196,9 +164,7 @@ export default function KofiModal({
               height: "640px",
               minHeight: "640px",
               marginTop: "-8px", // Clean flush alignment: trims top margin so the blue polygon banner sits flush with the header
-              filter: isDarkMode
-                ? "invert(0.9) hue-rotate(185deg) contrast(1.08) brightness(0.96)"
-                : "none",
+              filter: "none",
             }}
           />
         </div>
