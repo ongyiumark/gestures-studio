@@ -1,5 +1,10 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
+
+export const viewport: Viewport = {
+  themeColor: "#0c131d",
+  colorScheme: "dark",
+};
 
 export const metadata: Metadata = {
   metadataBase: new URL(
@@ -43,14 +48,8 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark" suppressHydrationWarning>
       <head>
-        <link rel="preconnect" href="https://ko-fi.com" />
-        <link
-          rel="preconnect"
-          href="https://js.stripe.com"
-          crossOrigin="anonymous"
-        />
-        <link rel="dns-prefetch" href="https://js.stripe.com" />
-        <link rel="dns-prefetch" href="https://m.stripe.com" />
+        <meta name="color-scheme" content="dark" />
+        <link rel="dns-prefetch" href="https://ko-fi.com" />
       </head>
       <body className="min-h-screen bg-[#0c131d] text-slate-100 selection:bg-terracotta-500/30 selection:text-gold-200">
         {children}

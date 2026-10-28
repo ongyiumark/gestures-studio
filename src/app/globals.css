@@ -3,8 +3,14 @@
 @tailwind utilities;
 
 :root {
+  color-scheme: dark;
   --background: #0c131d;
   --foreground: #f1f5f9;
+
+  --scrollbar-thumb: rgba(199, 74, 17, 0.7);
+  --scrollbar-track: rgba(12, 19, 29, 0.75);
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+  scrollbar-width: thin;
 }
 
 body {
@@ -15,28 +21,36 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* Heritage terracotta scrollbars (nod to original #c74a11 / rgba(199, 74, 17, 0.8)) */
-::-webkit-scrollbar {
-  width: 7px;
-  height: 7px;
+/* Standard CSS scrollbars (Baseline standard) */
+* {
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+  scrollbar-width: thin;
 }
 
-::-webkit-scrollbar-track {
-  background: rgba(12, 19, 29, 0.75);
-  border-radius: 9999px;
-}
+/* Legacy fallback for WebKit/Blink browsers when scrollbar-color is unsupported */
+@supports not (scrollbar-color: auto) {
+  ::-webkit-scrollbar {
+    width: 7px;
+    height: 7px;
+  }
 
-::-webkit-scrollbar-thumb {
-  background: rgba(199, 74, 17, 0.7);
-  border-radius: 9999px;
-}
+  ::-webkit-scrollbar-track {
+    background: rgba(12, 19, 29, 0.75);
+    border-radius: 9999px;
+  }
 
-::-webkit-scrollbar-thumb:hover {
-  background: rgba(234, 88, 12, 0.95);
-}
+  ::-webkit-scrollbar-thumb {
+    background: rgba(199, 74, 17, 0.7);
+    border-radius: 9999px;
+  }
 
-::-webkit-scrollbar-thumb:window-inactive {
-  background: rgba(199, 74, 17, 0.4);
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(234, 88, 12, 0.95);
+  }
+
+  ::-webkit-scrollbar-thumb:window-inactive {
+    background: rgba(199, 74, 17, 0.4);
+  }
 }
 
 ::selection {
